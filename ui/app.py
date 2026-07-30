@@ -1,7 +1,7 @@
 """
-Purpose: Main Streamlit entry point for Infra Spend Intelligence with one-click pipeline execution and executive reporting.
+Purpose: Main client-facing Streamlit entry point for Infra Spend Intelligence.
 Inputs: orchestrator.run_pipeline and JSON outputs under outputs/.
-Outputs: Interactive dashboard with pipeline status, KPIs, findings, recommendations, and optional intelligence views.
+Outputs: Modern, widget-driven executive dashboard with pipeline trigger and decision-ready summaries.
 Assigned Team Member: RYAN
 Dependencies: streamlit, pandas, json, pathlib.
 """
@@ -16,8 +16,6 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-
-# Ensure project root is importable when app is launched from ui/.
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
@@ -26,258 +24,337 @@ from orchestrator import run_pipeline  # noqa: E402
 
 
 OUTPUTS_DIR = ROOT_DIR / "outputs"
-
 st.set_page_config(page_title="Infra Spend Intelligence", layout="wide")
-st.title("Infra Spend Intelligence")
-st.caption("Agentic Infrastructure Contract & Spend Optimization Platform")
+
+st.markdown(
+    """
+<style>
+.main { background: linear-gradient(180deg, #f4f8ff 0%, #ffffff 34%); }
+.hero {
+  padding: 1.2rem 1.3rem;
+  border-radius: 16px;
+  background: radial-gradient(circle at 5% 5%, #74c0fc 0%, transparent 28%),
+                            radial-gradient(circle at 95% 15%, #d0bfff 0%, transparent 25%),
+                            linear-gradient(130deg, #124e78 0%, #3f37c9 72%);
+  color: #ffffff;
+  margin-bottom: 1rem;
+    box-shadow: 0 10px 26px rgba(63, 55, 201, 0.28);
+}
+.hero h1 { margin: 0; font-size: 1.85rem; }
+.hero p { margin: 0.45rem 0 0 0; font-size: 1rem; }
+.note {
+  margin-top: 0.7rem;
+  padding: 0.8rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+.kpi-card {
+  border: 1px solid #e1edf6;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 0.7rem;
+}
+.small { color: #3f5b6b; font-size: 0.92rem; }
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0.45rem;
+    background: #e9efff;
+    border-radius: 999px;
+    padding: 0.35rem;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 999px;
+    background: #dbe7ff;
+    color: #22415f;
+    font-weight: 600;
+    border: none;
+}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+    background: linear-gradient(120deg, #1f7a8c 0%, #5a67d8 100%);
+    color: #ffffff;
+}
+.stTabs [data-baseweb="tab-highlight"] {
+    display: none;
+}
+
+div[data-testid="stDataFrame"],
+div[data-testid="stDataEditor"] {
+    border: 1px solid #dbe7ff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(69, 90, 150, 0.08);
+}
+
+section[data-testid="stSidebar"] [data-testid="stSidebarNav"] ul {
+    gap: 0.35rem;
+}
+section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a {
+    border-radius: 10px;
+    margin: 0.1rem 0;
+    border: 1px solid #d6e3ff;
+    background: linear-gradient(120deg, #edf4ff 0%, #e9ecff 100%);
+}
+section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a span {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+    color: #23436a;
+}
+section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a:hover {
+    border-color: #9ab6ff;
+    background: linear-gradient(120deg, #dbe9ff 0%, #dfe2ff 100%);
+}
+section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[aria-current="page"] {
+    border-color: #637cff;
+    background: linear-gradient(120deg, #2a6f97 0%, #5a67d8 100%);
+}
+section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[aria-current="page"] span {
+    color: #ffffff;
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 
 def load_json(path: Path, default: Any = None) -> Any:
-    """
-    Safely loads a JSON output file.
-    If missing or invalid, returns default and shows a dashboard warning.
-    """
+    """Safely loads a JSON output file and returns default when missing/invalid."""
     if default is None:
         default = {}
-
     if not path.exists():
-        st.warning(f"Missing output file: {path.name}")
+        st.session_state.setdefault("app_warnings", []).append(f"Missing output file: {path.name}")
         return default
-
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:  # pragma: no cover - UI safety
-        st.warning(f"Invalid JSON in {path.name}: {exc}")
+    except Exception as exc:  # pragma: no cover - demo-safe behavior
+        st.session_state.setdefault("app_warnings", []).append(f"Invalid JSON in {path.name}: {exc}")
         return default
 
 
-# Pipeline trigger
-if st.button("Run Pipeline", type="primary"):
-    with st.spinner("Running Infra Spend Intelligence agent pipeline..."):
-        summary = run_pipeline()
-        st.session_state["pipeline_summary"] = summary
-
-    if summary.get("pipeline_status") == "success":
-        st.success("Pipeline completed.")
-    else:
-        st.warning("Pipeline completed with warnings or failures.")
-
-
-# Reload JSON outputs each render so UI reflects latest pipeline run.
-discovery = load_json(OUTPUTS_DIR / "discovery_output.json", default={})
-waste = load_json(OUTPUTS_DIR / "waste_findings.json", default={})
-contract_intel = load_json(OUTPUTS_DIR / "contract_intelligence_output.json", default={})
-renewal = load_json(OUTPUTS_DIR / "renewal_intelligence_output.json", default={})
-scenario = load_json(OUTPUTS_DIR / "scenario_comparison_output.json", default={})
-financial = load_json(OUTPUTS_DIR / "financial_optimization_output.json", default={})
-executive = load_json(OUTPUTS_DIR / "executive_summary.json", default={})
-
-
-# Executive Overview
-st.subheader("Executive Overview")
-
-
-def as_metric(value: Any, money: bool = False) -> str:
-    if value is None:
-        return "N/A"
+def money(value: Any) -> str:
     try:
-        numeric = float(value)
-        if money:
-            return f"${numeric:,.0f}"
-        if numeric.is_integer():
-            return f"{int(numeric)}"
-        return f"{numeric:,.2f}"
+        return f"${float(value):,.0f}"
     except Exception:
-        return str(value)
+        return "N/A"
 
 
-total_spend = discovery.get("total_annual_spend") if isinstance(discovery, dict) else None
-total_savings = (
-    financial.get("total_identified_annual_savings")
-    if isinstance(financial, dict)
-    else None
+def num(value: Any) -> str:
+    try:
+        n = float(value)
+        return f"{int(n)}" if n.is_integer() else f"{n:,.2f}"
+    except Exception:
+        return "N/A"
+
+
+def safe_int(value: Any, fallback: int = 0) -> int:
+    try:
+        return int(float(value))
+    except Exception:
+        return fallback
+
+
+st.session_state["app_warnings"] = []
+
+st.markdown(
+    """
+<div class="hero">
+    <h1>Infrastructure Spend Intelligence Platform</h1>
+  <p>
+        Contract and utilization intelligence that highlights waste, renewal risk, and fastest savings actions.
+  </p>
+</div>
+""",
+    unsafe_allow_html=True,
 )
-if total_savings in (None, 0):
-    total_savings = waste.get("total_potential_annual_savings") if isinstance(waste, dict) else None
 
-number_of_findings = waste.get("number_of_findings") if isinstance(waste, dict) else None
-high_priority_findings = waste.get("high_priority_findings") if isinstance(waste, dict) else None
-contracts_analyzed = contract_intel.get("total_contracts_parsed") if isinstance(contract_intel, dict) else None
-
-recommendations_count = None
-if isinstance(financial, dict):
-    recs = financial.get("recommendations", [])
-    if isinstance(recs, list):
-        recommendations_count = len(recs)
-
-col1, col2, col3 = st.columns(3)
-col4, col5, col6 = st.columns(3)
-
-col1.metric("Total Annual Spend", as_metric(total_spend, money=True))
-col2.metric("Total Identified Annual Savings", as_metric(total_savings, money=True))
-col3.metric("Number of Waste Findings", as_metric(number_of_findings))
-col4.metric("High Priority Findings", as_metric(high_priority_findings))
-col5.metric("Number of Contracts Analyzed", as_metric(contracts_analyzed))
-col6.metric("Number of Recommendations", as_metric(recommendations_count))
-
-
-# Agent Pipeline Status
-st.subheader("Agent Pipeline Status")
-pipeline_summary = st.session_state.get("pipeline_summary")
-
-if pipeline_summary:
-    st.write(f"Pipeline status: {pipeline_summary.get('pipeline_status', 'N/A')}")
-    st.write(f"Timestamp: {pipeline_summary.get('timestamp', 'N/A')}")
-
-    completed_agents = pipeline_summary.get("agents_run", [])
-    skipped_agents = pipeline_summary.get("agents_skipped", [])
-    failed_agents = pipeline_summary.get("agents_failed", [])
-
-    if completed_agents:
-        st.success("Completed Agents")
-        for agent in completed_agents:
-            st.write(f"- {agent}")
-
-    if skipped_agents:
-        st.warning("Skipped Agents")
-        for agent in skipped_agents:
-            st.write(f"- {agent}")
-
-    if failed_agents:
-        st.error("Failed Agents")
-        for agent in failed_agents:
-            st.write(f"- {agent}")
-else:
-    st.info("No pipeline run summary in this session yet. Click Run Pipeline.")
-
-
-# Top Recommendations
-st.subheader("Top Recommendations")
-recommendation_rows = []
-if isinstance(financial, dict):
-    recommendation_rows = financial.get("top_recommendations") or financial.get("recommendations") or []
-
-if recommendation_rows:
-    rec_df = pd.DataFrame(recommendation_rows)
-    expected_columns = [
-        "recommendation_id",
-        "category",
-        "issue",
-        "recommended_action",
-        "estimated_annual_savings",
-        "risk_level",
-        "confidence",
-        "business_rationale",
-    ]
-    for col in expected_columns:
-        if col not in rec_df.columns:
-            rec_df[col] = "N/A"
-
-    st.dataframe(rec_df[expected_columns], use_container_width=True)
-else:
-    st.info("No recommendations available in financial_optimization_output.json.")
-
-
-# Savings / Waste Findings
-st.subheader("Savings and Waste Findings")
-if isinstance(waste, dict) and waste:
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric(
-        "Total Potential Annual Savings",
-        as_metric(waste.get("total_potential_annual_savings"), money=True),
+# Sidebar controls to make the page interactive and demo-friendly.
+with st.sidebar:
+    st.markdown("## View Controls")
+    top_n = st.slider("Top rows to show", min_value=5, max_value=30, value=10, step=1)
+    priority_filter = st.multiselect(
+        "Finding priority",
+        options=["High", "Medium", "Low"],
+        default=["High", "Medium", "Low"],
     )
-    m2.metric(
-        "Total Potential Monthly Savings",
-        as_metric(waste.get("total_potential_monthly_savings"), money=True),
+    risk_filter = st.multiselect(
+        "Renewal risk filter",
+        options=["HIGH", "MEDIUM", "LOW"],
+        default=["HIGH", "MEDIUM", "LOW"],
     )
-    m3.metric("Number of Findings", as_metric(waste.get("number_of_findings")))
-    m4.metric("High Priority Findings", as_metric(waste.get("high_priority_findings")))
+    hide_low_savings = st.toggle("Hide low savings (<$10k)", value=True)
+    show_pipeline_block = st.toggle("Show pipeline status block", value=True)
 
-    findings = waste.get("findings", [])
-    if findings:
-        findings_df = pd.DataFrame(findings)
-        finding_cols = [
-            "finding_id",
-            "category",
-            "asset_id",
-            "issue",
-            "current_monthly_cost",
-            "estimated_annual_savings",
-            "recommended_action",
-            "priority",
-        ]
-        for col in finding_cols:
-            if col not in findings_df.columns:
-                findings_df[col] = "N/A"
+act_col, msg_col = st.columns([1, 3])
+with act_col:
+    if st.button("Run Pipeline", type="primary", width="stretch"):
+        with st.spinner("Running Infra Spend Intelligence pipeline..."):
+            summary = run_pipeline()
+            st.session_state["pipeline_summary"] = summary
+        if summary.get("pipeline_status") == "success":
+            st.success("Pipeline completed")
+        else:
+            st.warning("Pipeline completed with warnings")
+with msg_col:
+    st.markdown('<p class="small">Run pipeline to refresh outputs and update insights instantly.</p>', unsafe_allow_html=True)
 
-        st.dataframe(findings_df[finding_cols], use_container_width=True)
+# Reload data every render.
+discovery = load_json(OUTPUTS_DIR / "discovery_output.json", {})
+waste = load_json(OUTPUTS_DIR / "waste_findings.json", {})
+renewal = load_json(OUTPUTS_DIR / "renewal_intelligence_output.json", {})
+financial = load_json(OUTPUTS_DIR / "financial_optimization_output.json", {})
+executive = load_json(OUTPUTS_DIR / "executive_summary.json", {})
+
+if st.session_state.get("app_warnings"):
+    with st.expander("Data Warnings", expanded=False):
+        for item in st.session_state["app_warnings"]:
+            st.warning(item)
+
+# Executive cards (first page: only key info)
+annual_spend = discovery.get("total_annual_spend") if isinstance(discovery, dict) else None
+annual_savings = financial.get("total_identified_annual_savings") if isinstance(financial, dict) else None
+if not annual_savings and isinstance(waste, dict):
+    annual_savings = waste.get("total_potential_annual_savings")
+findings = waste.get("number_of_findings") if isinstance(waste, dict) else None
+high_priority = waste.get("high_priority_findings") if isinstance(waste, dict) else None
+renewal_summary = renewal.get("summary", {}) if isinstance(renewal, dict) else {}
+contracts_at_risk = renewal_summary.get("high_risk_contracts")
+
+k1, k2, k3, k4 = st.columns(4)
+k1.metric("Annual Spend", money(annual_spend) if annual_spend else "N/A")
+k2.metric("Potential Savings", money(annual_savings) if annual_savings else "N/A")
+k3.metric("Waste Findings", num(findings) if findings is not None else "N/A")
+k4.metric("Contracts at Risk", num(contracts_at_risk) if contracts_at_risk is not None else "N/A")
+
+if isinstance(executive, dict) and executive.get("executive_summary"):
+    st.subheader("Executive Summary")
+    st.write(executive.get("executive_summary"))
+
+# Widget-based sections
+opportunity_tab, risk_tab, trend_tab = st.tabs(["Top Opportunities", "Renewal Risks", "Waste Findings"])
+
+with opportunity_tab:
+    rec_rows = financial.get("top_recommendations") or financial.get("recommendations") or []
+    if rec_rows:
+        rec_df = pd.DataFrame(rec_rows)
+        for col in ["recommended_action", "estimated_annual_savings", "risk_level", "confidence", "category"]:
+            if col not in rec_df.columns:
+                rec_df[col] = "N/A"
+
+        if hide_low_savings and "estimated_annual_savings" in rec_df.columns:
+            rec_df = rec_df[pd.to_numeric(rec_df["estimated_annual_savings"], errors="coerce").fillna(0) >= 10000]
+
+        if "risk_level" in rec_df.columns:
+            rec_df = rec_df[rec_df["risk_level"].astype(str).str.title().isin(priority_filter)]
+
+        if rec_df.empty:
+            st.info("No recommendations match current filters.")
+        else:
+            view_cols = ["recommended_action", "category", "estimated_annual_savings", "risk_level", "confidence"]
+            st.data_editor(
+                rec_df[view_cols].head(top_n),
+                width="stretch",
+                hide_index=True,
+                disabled=True,
+                column_config={
+                    "recommended_action": "Recommended Action",
+                    "category": "Category",
+                    "estimated_annual_savings": st.column_config.NumberColumn("Annual Savings", format="$%d"),
+                    "risk_level": "Priority",
+                    "confidence": st.column_config.NumberColumn("Confidence", format="%.2f"),
+                },
+            )
     else:
-        st.info("No detailed findings present in waste_findings.json.")
-else:
-    st.info("Waste Detection Agent output not available yet.")
+        st.info("No recommendation data available yet.")
 
+with risk_tab:
+    risk_rows = renewal.get("renewal_risks", []) if isinstance(renewal, dict) else []
+    if risk_rows:
+        rdf = pd.DataFrame(risk_rows)
+        for col in ["contract_id", "days_remaining", "risk", "recommended_action", "renewal_date"]:
+            if col not in rdf.columns:
+                rdf[col] = "N/A"
 
-# Optional Contract Intelligence Section
-with st.expander("Contract Intelligence Findings"):
-    contracts = contract_intel.get("contracts", []) if isinstance(contract_intel, dict) else []
-    if contracts:
-        contracts_df = pd.DataFrame(contracts)
-        contract_cols = [
-            "contract_id",
-            "vendor",
-            "category",
-            "auto_renew",
-            "renewal_date",
-            "notice_period_days",
-            "termination_fee",
-            "annual_escalator",
-            "minimum_commitment",
-            "risk_level",
-            "clause_summary",
-        ]
-        for col in contract_cols:
-            if col not in contracts_df.columns:
-                contracts_df[col] = "N/A"
+        rdf = rdf[rdf["risk"].astype(str).str.upper().isin(risk_filter)] if "risk" in rdf.columns else rdf
 
-        st.dataframe(contracts_df[contract_cols], use_container_width=True)
+        if rdf.empty:
+            st.info("No renewal risks match current filters.")
+        else:
+            risk_cols = ["contract_id", "renewal_date", "days_remaining", "risk", "recommended_action"]
+            st.data_editor(
+                rdf[risk_cols].sort_values(by="days_remaining").head(top_n),
+                width="stretch",
+                hide_index=True,
+                disabled=True,
+                column_config={
+                    "contract_id": "Contract",
+                    "renewal_date": "Renewal Date",
+                    "days_remaining": st.column_config.NumberColumn("Days Remaining", format="%d"),
+                    "risk": "Risk",
+                    "recommended_action": "Recommended Action",
+                },
+            )
     else:
-        st.info("Contract Intelligence Agent output not available yet.")
+        st.info("Renewal risk output not available yet.")
 
+with trend_tab:
+    find_rows = waste.get("findings", []) if isinstance(waste, dict) else []
+    if find_rows:
+        fdf = pd.DataFrame(find_rows)
+        for col in ["category", "estimated_annual_savings", "priority"]:
+            if col not in fdf.columns:
+                fdf[col] = "N/A"
 
-# Optional Scenario Section
-st.subheader("Keep vs Cancel vs Renegotiate Scenarios")
-scenario_rows = scenario.get("scenario_results", []) if isinstance(scenario, dict) else []
-if scenario_rows:
-    scenario_df = pd.DataFrame(scenario_rows)
+        if "priority" in fdf.columns:
+            fdf = fdf[fdf["priority"].astype(str).str.title().isin(priority_filter)]
+        if hide_low_savings and "estimated_annual_savings" in fdf.columns:
+            fdf = fdf[pd.to_numeric(fdf["estimated_annual_savings"], errors="coerce").fillna(0) >= 10000]
 
-    # Normalize to requested display fields with robust fallbacks.
-    if "contract_id" not in scenario_df.columns:
-        scenario_df["contract_id"] = scenario_df.get("contract", "N/A")
-    if "vendor" not in scenario_df.columns:
-        scenario_df["vendor"] = "N/A"
-    if "rationale" not in scenario_df.columns:
-        scenario_df["rationale"] = scenario_df.get("issue", "N/A")
+        if fdf.empty:
+            st.info("No waste findings match current filters.")
+        else:
+            chart_df = (
+                fdf.assign(estimated_annual_savings=pd.to_numeric(fdf["estimated_annual_savings"], errors="coerce").fillna(0))
+                .groupby("category", as_index=False)["estimated_annual_savings"]
+                .sum()
+                .sort_values(by="estimated_annual_savings", ascending=False)
+                .head(10)
+            )
+            st.bar_chart(chart_df.set_index("category"))
 
-    scenario_cols = [
-        "contract_id",
-        "vendor",
-        "keep_cost",
-        "cancel_cost",
-        "renegotiate_cost",
-        "projected_savings",
-        "recommendation",
-        "rationale",
-    ]
-    for col in scenario_cols:
-        if col not in scenario_df.columns:
-            scenario_df[col] = "N/A"
+            detail_cols = ["finding_id", "category", "asset_id", "estimated_annual_savings", "recommended_action", "priority"]
+            for col in detail_cols:
+                if col not in fdf.columns:
+                    fdf[col] = "N/A"
+            st.data_editor(
+                fdf[detail_cols].sort_values(by="estimated_annual_savings", ascending=False).head(top_n),
+                width="stretch",
+                hide_index=True,
+                disabled=True,
+                column_config={
+                    "finding_id": "Finding",
+                    "category": "Category",
+                    "asset_id": "Asset",
+                    "estimated_annual_savings": st.column_config.NumberColumn("Annual Savings", format="$%d"),
+                    "recommended_action": "Recommended Action",
+                    "priority": "Priority",
+                },
+            )
+    else:
+        st.info("Waste findings are not available yet.")
 
-    st.dataframe(scenario_df[scenario_cols], use_container_width=True)
-else:
-    st.info("Scenario Comparison Agent output not available yet.")
-
-
-# Optional executive narrative panel for demo flow.
-if isinstance(executive, dict) and executive:
-    st.subheader("Executive Narrative")
-    st.write(executive.get("executive_summary", "N/A"))
+if show_pipeline_block:
+    with st.expander("Pipeline Status", expanded=False):
+        ps = st.session_state.get("pipeline_summary")
+        if ps:
+            st.write(f"Status: {ps.get('pipeline_status', 'N/A')}")
+            st.write(f"Timestamp: {ps.get('timestamp', 'N/A')}")
+            st.write(f"Outputs generated: {safe_int(len(ps.get('output_files_generated', [])))}")
+            if ps.get("agents_run"):
+                st.success("Completed: " + ", ".join(ps.get("agents_run", [])))
+            if ps.get("agents_skipped"):
+                st.warning("Skipped: " + ", ".join(ps.get("agents_skipped", [])))
+            if ps.get("agents_failed"):
+                st.error("Failed: " + ", ".join(ps.get("agents_failed", [])))
+        else:
+            st.info("No pipeline run yet in this session.")
