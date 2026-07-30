@@ -6,26 +6,26 @@ Assigned Team Member: SOFIA
 Dependencies: Project README, agent scripts, and output schemas.
 -->
 
-# PACT Workflow
+# Infra Spend Intelligence Workflow
 
 ## Sequential Steps
-1. Run Discovery Agent to generate discovery_output.json.
-2. Run Waste Detection Agent to generate waste_findings.json.
-3. Run Contract Intelligence Agent to generate contract_intelligence_output.json.
-4. Run Renewal Intelligence Agent to generate renewal_intelligence_output.json.
-5. Run Financial Optimization Agent to generate financial_optimization_output.json.
-6. Run Scenario Comparison Agent to generate scenario_comparison_output.json.
-7. Start Streamlit app and review results in dashboard pages.
+1. Discovery Agent reads source CSV files and creates `outputs/discovery_output.json`.
+2. Waste Detection Agent reads discovery + source data and creates `outputs/waste_findings.json`.
+3. Contract Intelligence Agent reads `contract_texts/` and creates `outputs/contract_intelligence_output.json`.
+4. Financial Optimization Agent combines discovery, waste, and contract intelligence outputs to create `outputs/financial_optimization_output.json`.
+5. Dashboard pages consume these JSON files to show spend, waste opportunities, and top recommendations.
+
+## Agent Flow
+Discovery Agent -> Waste Detection Agent -> Contract Intelligence Agent -> Financial Optimization Agent -> Dashboard
 
 ## Suggested Commands
 - python agents/discovery_agent.py
 - python agents/waste_detection_agent.py
 - python agents/contract_intelligence_agent.py
-- python agents/renewal_intelligence_agent.py
 - python agents/financial_optimization_agent.py
-- python agents/scenario_comparison_agent.py
 - streamlit run ui/app.py
 
 ## TODO (SOFIA)
 - Add workflow automation script
 - Add error handling and rollback strategy for failed stages
+- Add optional downstream agents (renewal and scenario) after vertical slice validation
