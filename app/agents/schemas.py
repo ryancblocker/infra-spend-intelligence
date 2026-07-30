@@ -1,0 +1,104 @@
+"""
+Purpose: Shared pydantic contracts passed between agents and rendered by the UI.
+Keeping these in one place means every agent - deterministic or LLM-backed -
+produces the same shape of finding/recommendation regardless of which backend
+generated it.
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class DiscoverySummary(BaseModel):
+    total_annual_spend: float
+    total_monthly_spend: float
+    spend_by_category: dict[str, float]
+    asset_counts: dict[str, int]
+
+
+class ExtractedContract(BaseModel):
+    contract_id: str
+    vendor: str = ""
+    category: str = ""
+    auto_renew: bool = False
+    renewal_date: str = ""
+    notice_period_days: int | None = None
+    termination_fee_pct: float | None = None
+    annual_escalator_pct: float | None = None
+    minimum_commitment: str = ""
+    sla_summary: str = ""
+    liability_cap_summary: str = ""
+    has_mfn_clause: bool = False
+    has_price_protection_clause: bool = False
+    risk_level: str = "Low"  # Low | Medium | High
+    risk_rationale: str = ""
+    extraction_source: str = "offline"  # ollama | anthropic | offline
+
+
+class Finding(BaseModel):
+    finding_id: str
+    category: str  # e.g. telecom_underutilization, license_underutilization, benchmark_variance, owner_gap
+    asset_id: str
+    contract_id: str = ""
+    issue: str
+    current_monthly_cost: float = 0.0
+    estimated_monthly_savings: float = 0.0
+    estimated_annual_savings: float = 0.0
+    recommended_action: str = "Review with owner"
+    priority: str = "Low"  # Low | Medium | High
+
+
+class ScenarioResult(BaseModel):
+    finding_id: str
+    asset_id: str
+    contract_id: str = ""
+    category: str = ""
+    issue: str = ""
+    recommended_action: str = "Review with owner"
+    risk_level: str = "Low"
+    confidence: float = 0.5
+    business_rationale: str = ""
+    negotiation_talking_points: list[str] = Field(default_factory=list)
+    keep_cost_36mo: float = 0.0
+    cancel_cost_36mo: float = 0.0
+    renegotiate_cost_36mo: float = 0.0
+    projected_savings_36mo: float = 0.0
+    break_even_months: float = 0.0
+    estimated_annual_savings: float = 0.0
+    source: str = "offline"
+
+
+class RenewalRisk(BaseModel):
+    contract_id: str
+    vendor: str
+    contract_label: str
+    renewal_date: str
+    notice_deadline: str
+    days_remaining: int
+    days_to_notice_deadline: int
+    auto_renew: bool
+    notice_window_closing: bool
+    risk: str  # LOW | MEDIUM | HIGH
+    recommended_action: str
+    annual_cost: float
+
+
+class CriticFlag(BaseModel):
+    target_id: str
+    target_type: str  # scenario | narrative
+    severity: str  # info | warning | error
+    message: str
+
+
+class PipelineRunSummary(BaseModel):
+    llm_mode: str
+    total_annual_spend: float
+    total_potential_annual_savings: float
+    number_of_findings: int
+    high_priority_findings: int
+    high_risk_contracts: int
+    executive_summary: str
+    top_risks: list[str] = Field(default_factory=list)
+    immediate_actions: list[str] = Field(default_factory=list)
+    critic_flags: list[CriticFlag] = Field(default_factory=list)

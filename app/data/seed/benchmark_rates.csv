@@ -1,0 +1,21 @@
+# Market benchmark reference rates used by the waste/benchmark agents.
+# Grounded in 2026 colocation/telecom/SaaS pricing research; see docs/architecture.md.
+category,benchmark_rate,unit
+circuit_DIA-100,4.2,usd_per_mbps_month
+circuit_DIA-500,2.4,usd_per_mbps_month
+circuit_DIA-1000,1.35,usd_per_mbps_month
+circuit_MPLS-Backbone,0.48,usd_per_mbps_month
+circuit_Point-to-Point,1.7,usd_per_mbps_month
+colo_rack_unit,190,usd_per_u_month
+colo_power_kw,196,usd_per_kw_month
+mobile_Basic,35,usd_per_line_month
+mobile_Standard,52,usd_per_line_month
+mobile_Premium,76,usd_per_line_month
+license_Identity & Access,11,usd_per_seat_month
+license_Productivity Suite,16,usd_per_seat_month
+license_Security - Endpoint,9,usd_per_seat_month
+license_Observability,30,usd_per_seat_month
+license_DevOps Platform,26,usd_per_seat_month
+license_CRM / ERP,95,usd_per_seat_month
+license_HR / Finance,23,usd_per_seat_month
+license_AI / LLM Assistant,38,usd_per_seat_month

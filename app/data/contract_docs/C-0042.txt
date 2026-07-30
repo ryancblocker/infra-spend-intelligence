@@ -1,0 +1,19 @@
+CONTRACT ID: C-0042
+VENDOR: VoiceBridge
+CATEGORY: Unified Communications
+
+This Unified Communications Services Agreement ('Agreement') governs cloud voice, messaging, and conferencing services covering 1398 UC seats.
+
+1. TERM AND RENEWAL. This Agreement commences on 2025-05-24 and continues through 2027-05-24 (the 'Term'), unless earlier terminated as provided herein. This Agreement shall automatically renew for successive one-year terms unless either party provides written notice of non-renewal at least 90 days prior to the end of the then-current Term.
+
+2. FEES. Customer shall pay Vendor recurring fees of $16,767.14 per month ($201,205.68 annualized), subject to an Annual Escalator of 3% applied on each anniversary of the Effective Date.
+
+3. TERMINATION. Either party may terminate this Agreement for uncured material breach upon thirty (30) days' written notice. If Customer terminates for convenience prior to the end of the Term, Customer shall pay an early termination fee equal to 15% of the remaining committed charges under the Term.
+
+4. Service Level Credits: Vendor shall issue a service credit equal to 5% of the affected month's fees for each full hour of Service unavailability beyond the committed uptime SLA of 99.9%, capped at 30% of monthly fees in any calendar month.
+
+5. Limitation of Liability: Except for breaches of confidentiality or indemnification obligations, each party's aggregate liability arising out of this Agreement shall not exceed the fees paid or payable in the twelve (12) months preceding the claim.
+
+6. Data Processing: The parties' Data Processing Addendum, incorporated by reference, governs the processing of Customer Data, including applicable cross-border transfer mechanisms and breach notification timelines.
+
+7. GOVERNING LAW. This Agreement is governed by the laws of the state in which Customer's APAC headquarters is located, without regard to conflict of law principles.

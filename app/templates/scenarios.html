@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Scenarios{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Keep / Cancel / Renegotiate</h1>
+    <p class="page-subtitle">36-month cost projections and negotiation guidance for every scored finding, ranked by savings.</p>
+  </div>
+</div>
+
+<div x-data="{ filter: 'All' }">
+  <div class="chip-row" style="margin-bottom:16px;">
+    {% for action in ['All', 'Renegotiate', 'Cancel', 'Right-size', 'Review with owner', 'Keep but monitor'] %}
+    <button class="chip" :class="filter === '{{ action }}' ? 'active' : ''" @click="filter = '{{ action }}'"
+            x-show="true"
+            :style="filter === '{{ action }}' ? '' : ''">{{ action }}</button>
+    {% endfor %}
+  </div>
+
+  {% for s in scenarios %}
+  <div class="card" style="margin-bottom:14px;" x-show="filter === 'All' || filter === '{{ s.recommended_action }}'">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+      <div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span class="badge badge-{{ 'critical' if s.recommended_action == 'Cancel' else ('warning' if s.recommended_action == 'Renegotiate' else 'neutral') }}">{{ s.recommended_action }}</span>
+          <strong>{{ s.asset_id }}</strong>
+          {% if s.contract_id %}<a class="row-link" href="/contracts/{{ s.contract_id }}" style="font-size:12px; color:var(--ink-muted);">{{ s.contract_id }}</a>{% endif %}
+        </div>
+        <div class="feed-meta">{{ s.issue }}</div>
+        <p style="font-size:13.5px; margin:8px 0 0 0;">{{ s.business_rationale }}</p>
+        {% if s.negotiation_talking_points %}
+        <ul style="margin:8px 0 0 18px; padding:0; font-size:13px; color:var(--ink-secondary);">
+          {% for point in s.negotiation_talking_points %}<li>{{ point }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      <div style="text-align:right; min-width:160px;">
+        <div class="feed-value savings figures" style="font-size:20px;">{{ s.estimated_annual_savings | money }}/yr</div>
+        <div class="feed-meta">confidence {{ (s.confidence * 100) | round | int }}%</div>
+      </div>
+    </div>
+
+    <div class="grid-3" style="margin-top:14px;">
+      <div class="kpi-card" style="padding:12px 14px;">
+        <div class="kpi-label">Keep (36mo)</div>
+        <div class="kpi-value figures" style="font-size:17px;">{{ s.keep_cost_36mo | money }}</div>
+      </div>
+      <div class="kpi-card" style="padding:12px 14px;">
+        <div class="kpi-label">Cancel (36mo)</div>
+        <div class="kpi-value figures" style="font-size:17px;">{{ s.cancel_cost_36mo | money }}</div>
+      </div>
+      <div class="kpi-card" style="padding:12px 14px;">
+        <div class="kpi-label">Renegotiate (36mo)</div>
+        <div class="kpi-value figures" style="font-size:17px;">{{ s.renegotiate_cost_36mo | money }}</div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state">Run the pipeline from the Overview page to generate scenarios.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,42 @@
+# Synthetic colocation deployment inventory referencing contracts.csv via contract_id.
+colo_id,contract_id,vendor,site,capacity,rack_units,power_kw,cross_connects,remote_hands_hours_monthly,monthly_cost,utilization_pct,owner
+COLO-0001,C-0011,Latticework Data Centers,US-Central DC3,40kW private cage,20,40,0,0,9192.79,63,
+COLO-0002,C-0011,Latticework Data Centers,US-Central DC4,4U cabinet,4,3.0,2,4,433.11,44,Sam O'Connor
+COLO-0003,C-0011,Latticework Data Centers,US-Central DC1,8U cabinet,8,8.3,4,0,1044.78,66,Elena Popescu
+COLO-0004,C-0011,Latticework Data Centers,US-Central DC4,20U cabinet,20,18.7,6,4,4296.46,92,Ash Patel
+COLO-0005,C-0011,Latticework Data Centers,US-Central DC2,15kW private cage,30,15,2,4,2863.82,79,Taylor Grant
+COLO-0006,C-0012,Ironhold Colocation,US-Central DC4,40kW private cage,30,40,5,0,8297.74,75,Taylor Grant
+COLO-0007,C-0012,Ironhold Colocation,US-Central DC1,15kW private cage,30,15,2,0,2724.38,40,Devon Brooks
+COLO-0008,C-0012,Ironhold Colocation,US-Central DC1,20U cabinet,20,17.4,2,8,2632.3,67,Priya Nair
+COLO-0009,C-0012,Ironhold Colocation,US-Central DC3,40kW private cage,20,40,5,2,8959.34,86,Chris Kim
+COLO-0010,C-0012,Ironhold Colocation,US-Central DC1,25kW private cage,30,25,5,4,5319.77,89,Devon Brooks
+COLO-0011,C-0013,Meridian Data Centers,US-East DC3,20U cabinet,20,22.0,0,0,2931.06,50,Alex Ramos
+COLO-0012,C-0013,Meridian Data Centers,US-East DC1,20U cabinet,20,19.0,4,4,3335.64,72,Monica Ruiz
+COLO-0013,C-0013,Meridian Data Centers,US-East DC4,20U cabinet,20,18.2,2,0,4357.72,79,Devon Brooks
+COLO-0014,C-0013,Meridian Data Centers,US-East DC4,8U cabinet,8,7.5,4,2,2031.85,38,
+COLO-0015,C-0013,Meridian Data Centers,US-East DC1,4U cabinet,4,2.6,1,8,1083.29,15,Sarah Lee
+COLO-0016,C-0013,Meridian Data Centers,US-East DC1,8U cabinet,8,8.1,4,0,1933.25,72,
+COLO-0017,C-0013,Meridian Data Centers,US-East DC3,40kW private cage,30,40,0,2,8568.23,89,Sam O'Connor
+COLO-0018,C-0013,Meridian Data Centers,US-East DC3,40kW private cage,10,40,1,0,8635.84,57,Sam O'Connor
+COLO-0019,C-0013,Meridian Data Centers,US-East DC4,12U cabinet,12,8.0,3,8,1234.09,42,
+COLO-0020,C-0014,Basecamp Colo,APAC DC4,42U cabinet,42,34.7,1,4,9649.55,56,Chris Kim
+COLO-0021,C-0014,Basecamp Colo,APAC DC1,4U cabinet,4,2.9,1,4,625.03,39,Jamie Chen
+COLO-0022,C-0014,Basecamp Colo,APAC DC3,20U cabinet,20,20.1,4,0,2347.63,72,Sam O'Connor
+COLO-0023,C-0014,Basecamp Colo,APAC DC4,15kW private cage,20,15,6,0,2831.35,53,Ash Patel
+COLO-0024,C-0014,Basecamp Colo,APAC DC1,42U cabinet,42,35.3,6,0,8036.04,57,Sam O'Connor
+COLO-0025,C-0014,Basecamp Colo,APAC DC1,12U cabinet,12,12.3,6,8,2440.06,74,
+COLO-0026,C-0014,Basecamp Colo,APAC DC3,40kW private cage,20,40,2,2,6481.07,35,Sarah Lee
+COLO-0027,C-0014,Basecamp Colo,APAC DC3,20U cabinet,20,21.7,0,8,2250.51,48,Jamie Chen
+COLO-0028,C-0014,Basecamp Colo,APAC DC1,8U cabinet,8,7.9,4,8,1332.88,40,Monica Ruiz
+COLO-0029,C-0015,Anchor Point Data Centers,US-East DC2,42U cabinet,42,42.7,6,2,9519.75,39,Morgan Yee
+COLO-0030,C-0015,Anchor Point Data Centers,US-East DC4,60kW private cage,20,60,4,4,9678.71,71,Sam O'Connor
+COLO-0031,C-0015,Anchor Point Data Centers,US-East DC4,40kW private cage,30,40,3,2,8503.63,40,Sam O'Connor
+COLO-0032,C-0015,Anchor Point Data Centers,US-East DC3,20U cabinet,20,16.0,2,2,4119.94,49,Morgan Yee
+COLO-0033,C-0015,Anchor Point Data Centers,US-East DC3,42U cabinet,42,29.3,6,2,8987.18,57,Jamie Chen
+COLO-0034,C-0016,Substation Colocation,US-West DC1,12U cabinet,12,9.3,0,2,2920.07,64,Monica Ruiz
+COLO-0035,C-0016,Substation Colocation,US-West DC3,12U cabinet,12,12.3,4,8,1365.74,67,
+COLO-0036,C-0016,Substation Colocation,US-West DC3,15kW private cage,30,15,1,2,2872.22,73,Chris Kim
+COLO-0037,C-0016,Substation Colocation,US-West DC3,4U cabinet,4,4.1,5,0,724.38,67,Devon Brooks
+COLO-0038,C-0016,Substation Colocation,US-West DC2,20U cabinet,20,18.1,2,2,5567.55,93,Sarah Lee
+COLO-0039,C-0016,Substation Colocation,US-West DC2,12U cabinet,12,9.2,2,0,3704.37,70,
+COLO-0040,C-0016,Substation Colocation,US-West DC1,42U cabinet,42,37.4,1,2,10801.99,54,Priya Nair

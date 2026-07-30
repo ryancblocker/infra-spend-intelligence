@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ contract.contract_id }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ contract.vendor }}</h1>
+    <p class="page-subtitle">{{ contract.contract_id }} · {{ contract.service_type }} · {{ contract.region }}</p>
+  </div>
+  <a class="btn" href="/contracts">← All contracts</a>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Annual Cost</div>
+    <div class="kpi-value figures">{{ contract.annual_cost | money }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Renewal Date</div>
+    <div class="kpi-value figures" style="font-size:20px;">{{ contract.end_date }}</div>
+    {% if renewal %}<div class="kpi-sub">{{ renewal.days_remaining }} days remaining</div>{% endif %}
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Auto-Renew</div>
+    <div class="kpi-value" style="font-size:20px;">{{ contract.auto_renew }}</div>
+    <div class="kpi-sub">{{ contract.notice_days }}-day notice period</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Termination Fee</div>
+    <div class="kpi-value figures" style="font-size:20px;">{{ contract.termination_fee_pct }}%</div>
+    <div class="kpi-sub">{{ contract.escalation_pct }}% annual escalator</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:24px;">
+  <div class="card">
+    <div class="section-title">Extracted Clauses {% if extracted %}<span class="badge badge-neutral" style="text-transform:none;">{{ extracted.extraction_source }}</span>{% endif %}</div>
+    {% if extracted %}
+      <p><strong>Risk level:</strong>
+        <span class="badge badge-{{ 'critical' if extracted.risk_level == 'High' else ('warning' if extracted.risk_level == 'Medium' else 'good') }}">{{ extracted.risk_level }}</span>
+      </p>
+      <p style="font-size:13.5px; color:var(--ink-secondary);">{{ extracted.risk_rationale }}</p>
+      {% if extracted.sla_summary %}<p><strong>SLA:</strong> {{ extracted.sla_summary }}</p>{% endif %}
+      {% if extracted.liability_cap_summary %}<p><strong>Liability cap:</strong> {{ extracted.liability_cap_summary }}</p>{% endif %}
+      <div class="chip-row">
+        {% if extracted.has_mfn_clause %}<span class="chip active">Most-favored pricing</span>{% endif %}
+        {% if extracted.has_price_protection_clause %}<span class="chip active">Price protection</span>{% endif %}
+        {% if extracted.minimum_commitment %}<span class="chip active">{{ extracted.minimum_commitment }}</span>{% endif %}
+      </div>
+    {% else %}
+      <div class="empty-state">No source contract document for this agreement, or the pipeline hasn't run yet.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">Source Document</div>
+    {% if source_text %}
+      <pre style="white-space:pre-wrap; font-size:12.5px; line-height:1.6; color:var(--ink-secondary); max-height:420px; overflow-y:auto; margin:0;">{{ source_text }}</pre>
+    {% else %}
+      <div class="empty-state">No source document on file for this contract.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if findings or scenarios %}
+<div class="card" style="margin-bottom:24px;">
+  <div class="section-title">Related Findings &amp; Recommendations</div>
+  {% for s in scenarios %}
+  <div class="feed-row">
+    <div>
+      <div class="feed-title">{{ s.recommended_action }} · {{ s.asset_id }}</div>
+      <div class="feed-meta">{{ s.issue }}</div>
+      {% if s.negotiation_talking_points %}
+      <div class="feed-meta" style="margin-top:4px;">💬 {{ s.negotiation_talking_points | join(' · ') }}</div>
+      {% endif %}
+    </div>
+    <div class="feed-value savings figures">{{ s.estimated_annual_savings | money }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="section-title">Portfolio Assets Under This Contract</div>
+<div class="grid-3">
+  {% for label, rows in [("Circuits", assets.circuits), ("Colocation", assets.colo), ("Licenses", assets.licenses), ("Mobile Lines", assets.mobile_lines)] %}
+    {% if rows %}
+    <div class="card">
+      <div class="section-title">{{ label }} ({{ rows | length }})</div>
+      {% for row in rows[:6] %}
+        <div class="feed-row">
+          <div class="feed-title">{{ row.get('circuit_id') or row.get('colo_id') or row.get('license_id') or row.get('line_id') }}</div>
+          <div class="feed-value figures" style="font-size:13px;">{{ row.monthly_cost | money }}/mo</div>
+        </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% endblock %}

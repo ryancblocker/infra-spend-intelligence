@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}PACT{% endblock %} · Mission Control</title>
+  <link rel="stylesheet" href="/static/css/theme.css">
+  <script src="/static/vendor/alpine.min.js" defer></script>
+  <script src="/static/vendor/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <nav class="sidenav">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>
+          <div class="brand-title">PACT</div>
+          <div class="brand-subtitle">Mission Control</div>
+        </div>
+      </div>
+
+      <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">Overview</a>
+      <a class="nav-link {% if request.url.path.startswith('/contracts') %}active{% endif %}" href="/contracts">Contracts</a>
+      <a class="nav-link {% if request.url.path == '/findings' %}active{% endif %}" href="/findings">Findings</a>
+      <a class="nav-link {% if request.url.path == '/scenarios' %}active{% endif %}" href="/scenarios">Scenarios</a>
+      <a class="nav-link {% if request.url.path == '/ask' %}active{% endif %}" href="/ask">Ask PACT</a>
+
+      <div class="nav-footer">
+        <button class="theme-toggle" onclick="pactToggleTheme()">Toggle theme</button>
+        <div class="mode-pill {% if llm_mode == 'offline' %}offline{% endif %}">
+          <span class="mode-dot"></span> {{ llm_mode }} mode
+        </div>
+      </div>
+    </nav>
+
+    <main class="main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

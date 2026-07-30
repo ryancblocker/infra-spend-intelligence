@@ -1,0 +1,177 @@
+# Synthetic enterprise mobility line inventory referencing contracts.csv via contract_id.
+line_id,contract_id,vendor,plan_tier,monthly_cost,assigned_user,department,last_activity_days,owner
+MBL-0001,C-0037,MobileOne,Standard,56.58,Elena Popescu,Support,16,Morgan Yee
+MBL-0002,C-0037,MobileOne,Basic,32.47,Ash Patel,Support,18,Devon Brooks
+MBL-0003,C-0037,MobileOne,Standard,52.34,Elena Popescu,Sales,17,Morgan Yee
+MBL-0004,C-0037,MobileOne,Standard,53.15,Taylor Grant,Support,9,Priya Nair
+MBL-0005,C-0037,MobileOne,Basic,37.14,Ash Patel,Engineering,30,Monica Ruiz
+MBL-0006,C-0037,MobileOne,Premium,71.78,Jamie Chen,Field Services,39,Sarah Lee
+MBL-0007,C-0037,MobileOne,Basic,30.51,Chris Kim,Logistics,3,Chris Kim
+MBL-0008,C-0037,MobileOne,Basic,34.72,Priya Nair,Logistics,10,Elena Popescu
+MBL-0009,C-0037,MobileOne,Premium,86.96,Ash Patel,Field Services,20,Alex Ramos
+MBL-0010,C-0037,MobileOne,Basic,37.69,Elena Popescu,Executive,2,Monica Ruiz
+MBL-0011,C-0037,MobileOne,Basic,38.82,Monica Ruiz,Executive,31,Monica Ruiz
+MBL-0012,C-0037,MobileOne,Standard,58.08,,Field Services,19,Taylor Grant
+MBL-0013,C-0037,MobileOne,Basic,39.83,Priya Nair,Support,33,
+MBL-0014,C-0037,MobileOne,Premium,86.28,Jamie Chen,Operations,21,Jamie Chen
+MBL-0015,C-0037,MobileOne,Standard,48.86,Ash Patel,Executive,36,Chris Kim
+MBL-0016,C-0037,MobileOne,Basic,36.11,Monica Ruiz,Sales,32,Morgan Yee
+MBL-0017,C-0037,MobileOne,Standard,46.43,Chris Kim,Executive,0,Jamie Chen
+MBL-0018,C-0037,MobileOne,Basic,37.54,Elena Popescu,Field Services,187,Sam O'Connor
+MBL-0019,C-0037,MobileOne,Standard,45.93,Monica Ruiz,Support,43,Chris Kim
+MBL-0020,C-0037,MobileOne,Premium,82.59,Ash Patel,Operations,23,Taylor Grant
+MBL-0021,C-0037,MobileOne,Basic,31.34,Sam O'Connor,Engineering,23,Alex Ramos
+MBL-0022,C-0037,MobileOne,Standard,52.06,Chris Kim,Field Services,15,Elena Popescu
+MBL-0023,C-0037,MobileOne,Standard,56.81,Taylor Grant,Sales,4,Devon Brooks
+MBL-0024,C-0037,MobileOne,Basic,38.29,Priya Nair,Field Services,9,Elena Popescu
+MBL-0025,C-0037,MobileOne,Premium,76.05,Devon Brooks,Field Services,5,Chris Kim
+MBL-0026,C-0037,MobileOne,Standard,45.83,Sam O'Connor,Executive,3,Ash Patel
+MBL-0027,C-0037,MobileOne,Standard,60.22,,Operations,13,Morgan Yee
+MBL-0028,C-0037,MobileOne,Basic,33.45,Jamie Chen,Engineering,199,Taylor Grant
+MBL-0029,C-0037,MobileOne,Basic,31.35,Monica Ruiz,Executive,23,Devon Brooks
+MBL-0030,C-0037,MobileOne,Standard,58.04,Morgan Yee,Sales,42,Elena Popescu
+MBL-0031,C-0037,MobileOne,Basic,38.6,Monica Ruiz,Operations,33,Taylor Grant
+MBL-0032,C-0037,MobileOne,Premium,85.87,Devon Brooks,Field Services,43,Monica Ruiz
+MBL-0033,C-0037,MobileOne,Standard,50.69,Sarah Lee,Sales,17,Chris Kim
+MBL-0034,C-0037,MobileOne,Premium,110.64,Alex Ramos,Support,15,
+MBL-0035,C-0037,MobileOne,Basic,30.34,Alex Ramos,Engineering,15,Sam O'Connor
+MBL-0036,C-0037,MobileOne,Standard,48.52,Alex Ramos,Executive,8,Ash Patel
+MBL-0037,C-0037,MobileOne,Basic,38.16,Sam O'Connor,Field Services,43,Chris Kim
+MBL-0038,C-0038,AirBridge Wireless,Standard,48.69,Taylor Grant,Support,16,Morgan Yee
+MBL-0039,C-0038,AirBridge Wireless,Standard,55.85,Elena Popescu,Engineering,22,Morgan Yee
+MBL-0040,C-0038,AirBridge Wireless,Standard,52.32,Morgan Yee,Field Services,3,Monica Ruiz
+MBL-0041,C-0038,AirBridge Wireless,Premium,66.86,,Sales,0,Sam O'Connor
+MBL-0042,C-0038,AirBridge Wireless,Premium,70.79,,Operations,32,Priya Nair
+MBL-0043,C-0038,AirBridge Wireless,Basic,36.38,Morgan Yee,Executive,231,Elena Popescu
+MBL-0044,C-0038,AirBridge Wireless,Standard,45.18,Ash Patel,Operations,1,Taylor Grant
+MBL-0045,C-0038,AirBridge Wireless,Standard,51.46,Jamie Chen,Support,33,Priya Nair
+MBL-0046,C-0038,AirBridge Wireless,Basic,35.26,Monica Ruiz,Executive,5,Jamie Chen
+MBL-0047,C-0038,AirBridge Wireless,Standard,53.48,Morgan Yee,Sales,5,Morgan Yee
+MBL-0048,C-0038,AirBridge Wireless,Premium,83.99,Priya Nair,Support,97,Morgan Yee
+MBL-0049,C-0038,AirBridge Wireless,Standard,46.24,Taylor Grant,Executive,36,
+MBL-0050,C-0038,AirBridge Wireless,Premium,87.37,Elena Popescu,Support,36,Monica Ruiz
+MBL-0051,C-0038,AirBridge Wireless,Basic,30.74,Sam O'Connor,Logistics,175,Monica Ruiz
+MBL-0052,C-0038,AirBridge Wireless,Basic,32.07,Monica Ruiz,Sales,4,
+MBL-0053,C-0038,AirBridge Wireless,Standard,53.5,Priya Nair,Engineering,21,Elena Popescu
+MBL-0054,C-0038,AirBridge Wireless,Standard,56.86,Elena Popescu,Executive,206,Elena Popescu
+MBL-0055,C-0038,AirBridge Wireless,Basic,30.76,Sam O'Connor,Executive,25,Taylor Grant
+MBL-0056,C-0038,AirBridge Wireless,Basic,36.34,Chris Kim,Operations,22,Morgan Yee
+MBL-0057,C-0038,AirBridge Wireless,Standard,47.79,Sam O'Connor,Executive,18,Sarah Lee
+MBL-0058,C-0038,AirBridge Wireless,Standard,46.23,Morgan Yee,Engineering,9,Devon Brooks
+MBL-0059,C-0038,AirBridge Wireless,Basic,38.12,Ash Patel,Sales,6,Jamie Chen
+MBL-0060,C-0038,AirBridge Wireless,Basic,34.49,Alex Ramos,Sales,5,Elena Popescu
+MBL-0061,C-0038,AirBridge Wireless,Basic,35.98,Ash Patel,Field Services,26,Taylor Grant
+MBL-0062,C-0038,AirBridge Wireless,Basic,39.01,Sam O'Connor,Operations,33,Priya Nair
+MBL-0063,C-0038,AirBridge Wireless,Standard,47.08,Jamie Chen,Operations,10,Jamie Chen
+MBL-0064,C-0038,AirBridge Wireless,Standard,52.26,Chris Kim,Operations,40,Devon Brooks
+MBL-0065,C-0038,AirBridge Wireless,Standard,51.87,,Engineering,25,
+MBL-0066,C-0038,AirBridge Wireless,Standard,57.06,Morgan Yee,Sales,38,Jamie Chen
+MBL-0067,C-0038,AirBridge Wireless,Basic,39.47,Monica Ruiz,Sales,20,Morgan Yee
+MBL-0068,C-0038,AirBridge Wireless,Standard,52.37,Monica Ruiz,Sales,17,Sarah Lee
+MBL-0069,C-0038,AirBridge Wireless,Standard,46.71,Priya Nair,Support,11,Sarah Lee
+MBL-0070,C-0039,Continental Mobile,Basic,35.6,Monica Ruiz,Executive,40,Elena Popescu
+MBL-0071,C-0039,Continental Mobile,Standard,67.11,Sam O'Connor,Operations,27,Alex Ramos
+MBL-0072,C-0039,Continental Mobile,Standard,48.09,Jamie Chen,Logistics,36,Chris Kim
+MBL-0073,C-0039,Continental Mobile,Premium,69.67,Ash Patel,Operations,42,Chris Kim
+MBL-0074,C-0039,Continental Mobile,Standard,54.59,Sam O'Connor,Operations,7,Jamie Chen
+MBL-0075,C-0039,Continental Mobile,Premium,80.43,Ash Patel,Executive,39,Alex Ramos
+MBL-0076,C-0039,Continental Mobile,Standard,49.7,Taylor Grant,Engineering,44,Sarah Lee
+MBL-0077,C-0039,Continental Mobile,Standard,53.95,Devon Brooks,Operations,40,Sam O'Connor
+MBL-0078,C-0039,Continental Mobile,Premium,88.27,Ash Patel,Operations,8,Morgan Yee
+MBL-0079,C-0039,Continental Mobile,Premium,80.49,Devon Brooks,Field Services,8,Jamie Chen
+MBL-0080,C-0039,Continental Mobile,Standard,53.42,Devon Brooks,Sales,26,Alex Ramos
+MBL-0081,C-0039,Continental Mobile,Standard,47.51,Chris Kim,Engineering,152,Alex Ramos
+MBL-0082,C-0039,Continental Mobile,Standard,47.52,Devon Brooks,Logistics,35,Ash Patel
+MBL-0083,C-0039,Continental Mobile,Standard,49.02,Priya Nair,Support,2,Monica Ruiz
+MBL-0084,C-0039,Continental Mobile,Standard,48.28,Morgan Yee,Operations,15,Jamie Chen
+MBL-0085,C-0039,Continental Mobile,Premium,76.24,Devon Brooks,Support,7,Sam O'Connor
+MBL-0086,C-0039,Continental Mobile,Basic,38.11,Elena Popescu,Field Services,39,Ash Patel
+MBL-0087,C-0039,Continental Mobile,Basic,31.39,Alex Ramos,Sales,36,Chris Kim
+MBL-0088,C-0039,Continental Mobile,Basic,35.39,Ash Patel,Logistics,36,Taylor Grant
+MBL-0089,C-0039,Continental Mobile,Premium,89.64,Monica Ruiz,Operations,3,Morgan Yee
+MBL-0090,C-0039,Continental Mobile,Premium,68.17,Elena Popescu,Support,20,Ash Patel
+MBL-0091,C-0039,Continental Mobile,Standard,55.14,Ash Patel,Support,40,Chris Kim
+MBL-0092,C-0039,Continental Mobile,Standard,54.5,Priya Nair,Sales,17,Monica Ruiz
+MBL-0093,C-0039,Continental Mobile,Premium,76.37,Elena Popescu,Sales,5,Sam O'Connor
+MBL-0094,C-0039,Continental Mobile,Standard,54.96,Priya Nair,Sales,25,Elena Popescu
+MBL-0095,C-0039,Continental Mobile,Standard,48.18,Taylor Grant,Support,35,Jamie Chen
+MBL-0096,C-0039,Continental Mobile,Standard,52.28,Alex Ramos,Sales,2,Elena Popescu
+MBL-0097,C-0039,Continental Mobile,Standard,51.89,Devon Brooks,Sales,204,Taylor Grant
+MBL-0098,C-0039,Continental Mobile,Basic,36.89,Sarah Lee,Executive,17,Elena Popescu
+MBL-0099,C-0039,Continental Mobile,Standard,46.24,Alex Ramos,Engineering,25,Sarah Lee
+MBL-0100,C-0039,Continental Mobile,Standard,56.33,Jamie Chen,Support,0,Ash Patel
+MBL-0101,C-0039,Continental Mobile,Basic,35.94,Alex Ramos,Support,44,Alex Ramos
+MBL-0102,C-0039,Continental Mobile,Basic,38.6,Chris Kim,Engineering,24,Ash Patel
+MBL-0103,C-0039,Continental Mobile,Premium,67.58,Monica Ruiz,Executive,8,
+MBL-0104,C-0039,Continental Mobile,Standard,46.03,Sarah Lee,Support,28,Morgan Yee
+MBL-0105,C-0039,Continental Mobile,Basic,37.48,Devon Brooks,Sales,13,Priya Nair
+MBL-0106,C-0039,Continental Mobile,Basic,37.52,Monica Ruiz,Engineering,20,
+MBL-0107,C-0040,Skylark Mobile,Basic,31.57,Morgan Yee,Logistics,7,Morgan Yee
+MBL-0108,C-0040,Skylark Mobile,Standard,45.66,Devon Brooks,Executive,23,Monica Ruiz
+MBL-0109,C-0040,Skylark Mobile,Basic,39.31,Elena Popescu,Engineering,41,Ash Patel
+MBL-0110,C-0040,Skylark Mobile,Basic,34.16,Jamie Chen,Field Services,36,Alex Ramos
+MBL-0111,C-0040,Skylark Mobile,Standard,58.53,Alex Ramos,Support,25,Monica Ruiz
+MBL-0112,C-0040,Skylark Mobile,Standard,49.23,Priya Nair,Logistics,146,Sam O'Connor
+MBL-0113,C-0040,Skylark Mobile,Basic,37.85,Taylor Grant,Sales,37,Taylor Grant
+MBL-0114,C-0040,Skylark Mobile,Premium,84.4,Chris Kim,Logistics,199,Chris Kim
+MBL-0115,C-0040,Skylark Mobile,Basic,35.42,Alex Ramos,Support,191,Devon Brooks
+MBL-0116,C-0040,Skylark Mobile,Premium,83.18,Chris Kim,Field Services,26,Jamie Chen
+MBL-0117,C-0040,Skylark Mobile,Basic,39.97,Chris Kim,Field Services,33,Taylor Grant
+MBL-0118,C-0040,Skylark Mobile,Premium,76.46,Priya Nair,Field Services,8,Jamie Chen
+MBL-0119,C-0040,Skylark Mobile,Standard,53.88,Sarah Lee,Logistics,15,Morgan Yee
+MBL-0120,C-0040,Skylark Mobile,Premium,88.15,Taylor Grant,Support,20,Devon Brooks
+MBL-0121,C-0040,Skylark Mobile,Basic,39.44,Jamie Chen,Sales,9,Chris Kim
+MBL-0122,C-0040,Skylark Mobile,Standard,49.71,Chris Kim,Support,28,
+MBL-0123,C-0040,Skylark Mobile,Basic,31.2,Elena Popescu,Engineering,44,Elena Popescu
+MBL-0124,C-0040,Skylark Mobile,Basic,38.57,Taylor Grant,Sales,25,
+MBL-0125,C-0040,Skylark Mobile,Standard,48.9,,Operations,25,Sarah Lee
+MBL-0126,C-0040,Skylark Mobile,Standard,53.25,Sarah Lee,Operations,151,Monica Ruiz
+MBL-0127,C-0040,Skylark Mobile,Basic,38.24,Morgan Yee,Engineering,5,Jamie Chen
+MBL-0128,C-0040,Skylark Mobile,Basic,44.46,Devon Brooks,Logistics,8,Sam O'Connor
+MBL-0129,C-0040,Skylark Mobile,Premium,85.22,Alex Ramos,Support,10,Chris Kim
+MBL-0130,C-0040,Skylark Mobile,Standard,55.87,Monica Ruiz,Field Services,11,Alex Ramos
+MBL-0131,C-0040,Skylark Mobile,Premium,71.87,Sam O'Connor,Engineering,39,
+MBL-0132,C-0040,Skylark Mobile,Standard,52.48,Jamie Chen,Engineering,17,Jamie Chen
+MBL-0133,C-0040,Skylark Mobile,Standard,54.64,Priya Nair,Engineering,1,Monica Ruiz
+MBL-0134,C-0040,Skylark Mobile,Standard,50.39,Sam O'Connor,Field Services,32,Priya Nair
+MBL-0135,C-0040,Skylark Mobile,Basic,30.26,,Sales,215,Sam O'Connor
+MBL-0136,C-0040,Skylark Mobile,Standard,56.5,Jamie Chen,Operations,15,Monica Ruiz
+MBL-0137,C-0040,Skylark Mobile,Basic,38.16,Chris Kim,Support,36,Monica Ruiz
+MBL-0138,C-0040,Skylark Mobile,Standard,50.32,Sarah Lee,Field Services,15,
+MBL-0139,C-0040,Skylark Mobile,Premium,82.44,,Engineering,44,Chris Kim
+MBL-0140,C-0040,Skylark Mobile,Standard,47.13,Devon Brooks,Operations,34,Elena Popescu
+MBL-0141,C-0040,Skylark Mobile,Standard,46.35,Priya Nair,Support,252,Morgan Yee
+MBL-0142,C-0040,Skylark Mobile,Basic,31.3,Taylor Grant,Engineering,245,Jamie Chen
+MBL-0143,C-0040,Skylark Mobile,Standard,47.12,Taylor Grant,Sales,4,Priya Nair
+MBL-0144,C-0040,Skylark Mobile,Premium,74.89,Sarah Lee,Logistics,10,Alex Ramos
+MBL-0145,C-0041,Union Wireless,Basic,30.88,Devon Brooks,Field Services,12,
+MBL-0146,C-0041,Union Wireless,Basic,36.38,Jamie Chen,Logistics,19,Alex Ramos
+MBL-0147,C-0041,Union Wireless,Standard,58.42,Monica Ruiz,Logistics,11,Sam O'Connor
+MBL-0148,C-0041,Union Wireless,Standard,60.22,Ash Patel,Operations,36,Morgan Yee
+MBL-0149,C-0041,Union Wireless,Standard,55.01,Priya Nair,Field Services,26,Morgan Yee
+MBL-0150,C-0041,Union Wireless,Standard,53.3,Monica Ruiz,Operations,34,Ash Patel
+MBL-0151,C-0041,Union Wireless,Premium,79.32,Monica Ruiz,Operations,241,Elena Popescu
+MBL-0152,C-0041,Union Wireless,Premium,85.01,Jamie Chen,Sales,28,Sam O'Connor
+MBL-0153,C-0041,Union Wireless,Premium,89.3,Monica Ruiz,Logistics,5,Elena Popescu
+MBL-0154,C-0041,Union Wireless,Standard,59.96,Ash Patel,Support,20,Priya Nair
+MBL-0155,C-0041,Union Wireless,Premium,66.68,Taylor Grant,Support,17,Morgan Yee
+MBL-0156,C-0041,Union Wireless,Premium,65.31,Monica Ruiz,Engineering,7,Sarah Lee
+MBL-0157,C-0041,Union Wireless,Basic,35.88,Jamie Chen,Logistics,36,Priya Nair
+MBL-0158,C-0041,Union Wireless,Standard,58.01,Ash Patel,Field Services,24,Devon Brooks
+MBL-0159,C-0041,Union Wireless,Standard,52.1,Sam O'Connor,Field Services,38,Elena Popescu
+MBL-0160,C-0041,Union Wireless,Standard,50.94,Alex Ramos,Logistics,30,Sarah Lee
+MBL-0161,C-0041,Union Wireless,Premium,65.51,Ash Patel,Support,31,Morgan Yee
+MBL-0162,C-0041,Union Wireless,Standard,59.59,Elena Popescu,Sales,28,Chris Kim
+MBL-0163,C-0041,Union Wireless,Basic,37.29,Devon Brooks,Support,13,Monica Ruiz
+MBL-0164,C-0041,Union Wireless,Standard,52.27,Alex Ramos,Logistics,32,Taylor Grant
+MBL-0165,C-0041,Union Wireless,Basic,37.1,Priya Nair,Engineering,144,Devon Brooks
+MBL-0166,C-0041,Union Wireless,Premium,81.1,Taylor Grant,Logistics,45,
+MBL-0167,C-0041,Union Wireless,Standard,51.96,Morgan Yee,Sales,1,Sam O'Connor
+MBL-0168,C-0041,Union Wireless,Standard,51.69,Priya Nair,Executive,22,Jamie Chen
+MBL-0169,C-0041,Union Wireless,Premium,71.47,Alex Ramos,Operations,241,Priya Nair
+MBL-0170,C-0041,Union Wireless,Standard,48.21,Chris Kim,Sales,17,Monica Ruiz
+MBL-0171,C-0041,Union Wireless,Standard,57.97,Devon Brooks,Executive,8,Alex Ramos
+MBL-0172,C-0041,Union Wireless,Standard,45.13,Ash Patel,Logistics,45,Sarah Lee
+MBL-0173,C-0041,Union Wireless,Standard,51.36,Ash Patel,Field Services,13,Sam O'Connor
+MBL-0174,C-0041,Union Wireless,Standard,57.36,Priya Nair,Operations,42,
+MBL-0175,C-0041,Union Wireless,Premium,79.04,Morgan Yee,Logistics,6,Jamie Chen

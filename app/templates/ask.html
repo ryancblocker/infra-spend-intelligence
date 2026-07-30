@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Ask PACT{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Ask PACT</h1>
+    <p class="page-subtitle">Ask a natural-language question about any contract. Answers are grounded in retrieved contract text ({{ llm_mode }} mode).</p>
+  </div>
+</div>
+
+<div class="card" x-data="askChat()" style="display:flex; flex-direction:column; height:60vh;">
+  <div x-ref="scrollbox" style="flex:1; overflow-y:auto; padding-right:6px;">
+    <template x-if="messages.length === 0">
+      <div class="empty-state">
+        Try: "Which contracts have the highest termination fees?" or "What's the notice period on our colocation agreements?"
+      </div>
+    </template>
+    <template x-for="(m, i) in messages" :key="i">
+      <div style="margin-bottom:16px;">
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); margin-bottom:4px;"
+             x-text="m.role === 'user' ? 'You' : 'PACT'"></div>
+        <div style="font-size:14px; line-height:1.6; white-space:pre-wrap;" x-text="m.text"></div>
+        <template x-if="m.sources && m.sources.length">
+          <div class="chip-row" style="margin-top:8px;">
+            <template x-for="src in m.sources" :key="src">
+              <a class="chip" :href="'/contracts/' + src" x-text="src"></a>
+            </template>
+          </div>
+        </template>
+      </div>
+    </template>
+    <div x-show="asking" class="feed-meta">PACT is thinking…</div>
+  </div>
+
+  <form @submit.prevent="send()" style="display:flex; gap:10px; margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+    <input class="searchbox" style="max-width:none; flex:1;" type="text" x-model="question"
+           placeholder="Ask about renewal terms, fees, SLAs, negotiation levers…" :disabled="asking">
+    <button class="btn btn-primary" type="submit" :disabled="asking || !question.trim()">Ask</button>
+  </form>
+</div>
+
+{% endblock %}

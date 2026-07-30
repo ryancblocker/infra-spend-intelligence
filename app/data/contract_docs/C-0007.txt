@@ -1,0 +1,21 @@
+CONTRACT ID: C-0007
+VENDOR: Lattice Networks
+CATEGORY: Network Circuit Services
+
+This Master Service Agreement ('Agreement') governs the provisioning of dedicated network circuit services, including 7 active circuits, delivered by Vendor to Customer's designated sites in the US-West region.
+
+1. TERM AND RENEWAL. This Agreement commences on 2024-08-26 and continues through 2026-08-26 (the 'Term'), unless earlier terminated as provided herein. This Agreement shall automatically renew for successive one-year terms unless either party provides written notice of non-renewal at least 90 days prior to the end of the then-current Term.
+
+2. FEES. Customer shall pay Vendor recurring fees of $9,936.97 per month ($119,243.64 annualized), subject to an Annual Escalator of 2% applied on each anniversary of the Effective Date.
+
+3. TERMINATION. Either party may terminate this Agreement for uncured material breach upon thirty (30) days' written notice. If Customer terminates for convenience prior to the end of the Term, Customer shall pay an early termination fee equal to 25% of the remaining committed charges under the Term.
+
+4. Service Level Credits: In the event measured availability falls below 99.95% in a calendar month, Customer shall receive a credit of 2% of that month's fees per 0.1% shortfall, capped at 25% of monthly fees.
+
+5. Limitation of Liability: Except for breaches of confidentiality or indemnification obligations, each party's aggregate liability arising out of this Agreement shall not exceed the fees paid or payable in the twelve (12) months preceding the claim.
+
+6. Price Protection: Unit pricing shall not increase during the initial Term. Any renewal term pricing adjustment is limited to the Annual Escalator set forth above, provided Customer maintains the Minimum Commitment.
+
+7. Data Processing: The parties' Data Processing Addendum, incorporated by reference, governs the processing of Customer Data, including applicable cross-border transfer mechanisms and breach notification timelines.
+
+8. GOVERNING LAW. This Agreement is governed by the laws of the state in which Customer's US-West headquarters is located, without regard to conflict of law principles.

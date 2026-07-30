@@ -1,0 +1,42 @@
+# Synthetic SaaS/software license inventory referencing contracts.csv via contract_id.
+# pricing_model is 'per_seat' or 'consumption' (committed-seat, usage-true-up).
+license_id,contract_id,vendor,product_name,category,pricing_model,purchased_count,active_users,unit_monthly_cost,monthly_cost,owner
+LIC-0001,C-0017,Vaultkey Identity,Vaultkey Identity Core,Identity & Access,per_seat,1879,1774,12.18,22887.58,Chris Kim
+LIC-0002,C-0017,Vaultkey Identity,Vaultkey Identity Plus,Identity & Access,per_seat,1240,1150,13.66,16942.5,Devon Brooks
+LIC-0003,C-0018,Keystone IAM,Keystone IAM Core,Identity & Access,per_seat,2006,1747,11.08,22234.87,Ash Patel
+LIC-0004,C-0018,Keystone IAM,Keystone IAM Plus,Identity & Access,per_seat,2064,1663,9.13,18853.42,
+LIC-0005,C-0019,Gatepost Access,Gatepost Access Core,Identity & Access,per_seat,2340,2234,11.06,25885.8,Taylor Grant
+LIC-0006,C-0020,Cascade Productivity,Cascade Productivity Core,Productivity Suite,per_seat,1805,1740,18.5,33391.79,Sarah Lee
+LIC-0007,C-0021,Brightline Workspace,Brightline Workspace Core,Productivity Suite,per_seat,955,866,13.22,12623.65,
+LIC-0008,C-0021,Brightline Workspace,Brightline Workspace Plus,Productivity Suite,per_seat,2372,1525,17.0,40319.95,Alex Ramos
+LIC-0009,C-0021,Brightline Workspace,Brightline Workspace Enterprise,Productivity Suite,per_seat,1490,1319,12.02,17903.31,Taylor Grant
+LIC-0010,C-0022,Openfield Docs,Openfield Docs Core,Productivity Suite,per_seat,566,196,18.57,10511.21,Morgan Yee
+LIC-0011,C-0023,CyberSecure,CyberSecure Core,Security - Endpoint,per_seat,1246,619,9.66,12038.15,Monica Ruiz
+LIC-0012,C-0023,CyberSecure,CyberSecure Plus,Security - Endpoint,per_seat,679,619,8.52,5788.32,Sarah Lee
+LIC-0013,C-0023,CyberSecure,CyberSecure Enterprise,Security - Endpoint,per_seat,2131,2101,8.03,17104.49,Devon Brooks
+LIC-0014,C-0024,Overwatch Security,Overwatch Security Core,Security - Endpoint,per_seat,1592,1458,6.63,10557.21,Sarah Lee
+LIC-0015,C-0025,Sentrywall,Sentrywall Core,Security - Endpoint,per_seat,2331,1481,8.82,20560.53,Sam O'Connor
+LIC-0016,C-0025,Sentrywall,Sentrywall Plus,Security - Endpoint,per_seat,1624,1391,6.46,10489.2,
+LIC-0017,C-0025,Sentrywall,Sentrywall Enterprise,Security - Endpoint,per_seat,2163,1631,11.44,24734.52,Devon Brooks
+LIC-0018,C-0026,Pulsepoint Observability,Pulsepoint Observability Core,Observability,per_seat,287,258,33.24,9538.87,Morgan Yee
+LIC-0019,C-0026,Pulsepoint Observability,Pulsepoint Observability Plus,Observability,per_seat,202,98,32.48,6560.17,Taylor Grant
+LIC-0020,C-0026,Pulsepoint Observability,Pulsepoint Observability Enterprise,Observability,per_seat,120,86,31.16,3738.82,Elena Popescu
+LIC-0021,C-0027,Northstar Analytics,Northstar Analytics Core,Observability,per_seat,208,197,37.8,7861.41,
+LIC-0022,C-0028,Flowstate DevOps,Flowstate DevOps Core,DevOps Platform,per_seat,299,274,30.24,9041.45,Ash Patel
+LIC-0023,C-0028,Flowstate DevOps,Flowstate DevOps Plus,DevOps Platform,per_seat,218,167,27.57,6010.98,Taylor Grant
+LIC-0024,C-0028,Flowstate DevOps,Flowstate DevOps Enterprise,DevOps Platform,per_seat,269,148,30.85,8297.78,Chris Kim
+LIC-0025,C-0029,Forgeline CI/CD,Forgeline CI/CD Core,DevOps Platform,per_seat,205,191,30.7,6293.73,Elena Popescu
+LIC-0026,C-0030,Bridgeform CRM,Bridgeform CRM Core,CRM / ERP,per_seat,348,221,67.31,23423.9,Devon Brooks
+LIC-0027,C-0030,Bridgeform CRM,Bridgeform CRM Plus,CRM / ERP,per_seat,355,254,111.49,39579.78,Sam O'Connor
+LIC-0028,C-0030,Bridgeform CRM,Bridgeform CRM Enterprise,CRM / ERP,per_seat,75,60,86.07,6455.28,
+LIC-0029,C-0031,Compass ERP,Compass ERP Core,CRM / ERP,per_seat,236,231,93.35,22030.27,Ash Patel
+LIC-0030,C-0031,Compass ERP,Compass ERP Plus,CRM / ERP,per_seat,223,158,100.46,22403.39,Jamie Chen
+LIC-0031,C-0031,Compass ERP,Compass ERP Enterprise,CRM / ERP,per_seat,85,61,115.38,9807.64,Priya Nair
+LIC-0032,C-0032,Brightline HR,Brightline HR Core,HR / Finance,per_seat,85,30,26.95,2290.78,Monica Ruiz
+LIC-0033,C-0032,Brightline HR,Brightline HR Plus,HR / Finance,per_seat,150,46,17.68,2651.8,Priya Nair
+LIC-0034,C-0033,Fernwood People Ops,Fernwood People Ops Core,HR / Finance,per_seat,189,104,22.88,4323.96,
+LIC-0035,C-0034,Nimbus AI,Nimbus AI Core,AI / LLM Assistant,consumption,1120,909,56.26,63010.76,Ash Patel
+LIC-0036,C-0035,CogniStack AI,CogniStack AI Core,AI / LLM Assistant,consumption,904,358,35.77,32334.93,
+LIC-0037,C-0035,CogniStack AI,CogniStack AI Plus,AI / LLM Assistant,consumption,1438,905,58.85,84622.67,Alex Ramos
+LIC-0038,C-0036,Synapse Copilot,Synapse Copilot Core,AI / LLM Assistant,consumption,540,338,30.3,16362.05,Devon Brooks
+LIC-0039,C-0036,Synapse Copilot,Synapse Copilot Plus,AI / LLM Assistant,consumption,990,797,41.51,41091.13,Taylor Grant

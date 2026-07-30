@@ -1,0 +1,19 @@
+CONTRACT ID: C-0035
+VENDOR: CogniStack AI
+CATEGORY: Software License
+
+This Software Subscription Agreement ('Agreement') governs Customer's subscription to Vendor's software products on a 904 committed seats (consumption true-up quarterly) basis.
+
+1. TERM AND RENEWAL. This Agreement commences on 2024-05-11 and continues through 2027-05-11 (the 'Term'), unless earlier terminated as provided herein. This Agreement shall terminate at the end of the Term unless renewed by mutual written agreement of the parties at least 90 days prior to expiration.
+
+2. FEES. Customer shall pay Vendor recurring fees of $116,957.60 per month ($1,403,491.20 annualized), subject to an Annual Escalator of 5% applied on each anniversary of the Effective Date.
+
+3. TERMINATION. Either party may terminate this Agreement for uncured material breach upon thirty (30) days' written notice. If Customer terminates for convenience prior to the end of the Term, Customer shall pay an early termination fee equal to 10% of the remaining committed charges under the Term.
+
+4. Service Level Credits: Vendor shall issue a service credit equal to 5% of the affected month's fees for each full hour of Service unavailability beyond the committed uptime SLA of 99.9%, capped at 30% of monthly fees in any calendar month.
+
+5. Limitation of Liability: Except for breaches of confidentiality or indemnification obligations, each party's aggregate liability arising out of this Agreement shall not exceed the fees paid or payable in the twelve (12) months preceding the claim.
+
+6. Data Processing: The parties' Data Processing Addendum, incorporated by reference, governs the processing of Customer Data, including applicable cross-border transfer mechanisms and breach notification timelines.
+
+7. GOVERNING LAW. This Agreement is governed by the laws of the state in which Customer's EMEA headquarters is located, without regard to conflict of law principles.

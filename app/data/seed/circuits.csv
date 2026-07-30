@@ -1,0 +1,84 @@
+# Synthetic telecom circuit inventory referencing contracts.csv via contract_id.
+circuit_id,contract_id,vendor,circuit_type,bandwidth_mbps,site,region,monthly_cost,utilization_pct,install_date,owner,sla_tier
+CIRC-0001,C-0001,TelNet Communications,DIA-100,83,APAC Site 4,APAC,413.6,47,2025-02-12,Alex Ramos,Gold
+CIRC-0002,C-0001,TelNet Communications,Point-to-Point,678,APAC Site 1,APAC,1659.97,59,2024-11-09,Jamie Chen,Gold
+CIRC-0003,C-0001,TelNet Communications,DIA-100,105,APAC Site 6,APAC,517.86,83,2024-10-14,Monica Ruiz,Bronze
+CIRC-0004,C-0001,TelNet Communications,Point-to-Point,1069,APAC Site 8,APAC,3556.07,84,2024-09-26,Chris Kim,Bronze
+CIRC-0005,C-0001,TelNet Communications,DIA-500,455,APAC Site 9,APAC,1432.64,41,2025-01-05,Sam O'Connor,Silver
+CIRC-0006,C-0001,TelNet Communications,DIA-1000,1076,APAC Site 7,APAC,1638.33,88,2024-11-21,Sarah Lee,Bronze
+CIRC-0007,C-0001,TelNet Communications,MPLS-Backbone,2645,APAC Site 8,APAC,1363.79,76,2024-09-13,Jamie Chen,Gold
+CIRC-0008,C-0001,TelNet Communications,DIA-100,85,APAC Site 3,APAC,409.91,40,2025-02-11,Jamie Chen,Silver
+CIRC-0009,C-0001,TelNet Communications,DIA-100,128,APAC Site 7,APAC,519.16,76,2025-01-20,Priya Nair,Silver
+CIRC-0010,C-0001,TelNet Communications,DIA-1000,1007,APAC Site 9,APAC,1580.11,39,2024-08-23,Jamie Chen,Bronze
+CIRC-0011,C-0002,MetroWave Networks,DIA-1000,1074,US-East Site 4,US-East,1265.26,12,2023-09-17,Taylor Grant,Gold
+CIRC-0012,C-0002,MetroWave Networks,Point-to-Point,865,US-East Site 9,US-East,1564.97,68,2023-10-30,Devon Brooks,Gold
+CIRC-0013,C-0002,MetroWave Networks,Point-to-Point,1747,US-East Site 9,US-East,2513.4,50,2023-10-03,Sam O'Connor,Bronze
+CIRC-0014,C-0002,MetroWave Networks,Point-to-Point,501,US-East Site 8,US-East,961.29,44,2023-11-01,Monica Ruiz,Gold
+CIRC-0015,C-0002,MetroWave Networks,DIA-1000,1022,US-East Site 2,US-East,1165.64,40,2023-09-24,Taylor Grant,Silver
+CIRC-0016,C-0002,MetroWave Networks,MPLS-Backbone,8684,US-East Site 7,US-East,3219.71,46,2023-12-28,Alex Ramos,Bronze
+CIRC-0017,C-0002,MetroWave Networks,MPLS-Backbone,9756,US-East Site 2,US-East,5023.77,84,2023-09-15,Taylor Grant,Gold
+CIRC-0018,C-0002,MetroWave Networks,Point-to-Point,1994,US-East Site 4,US-East,4043.52,81,2023-10-19,Devon Brooks,Gold
+CIRC-0019,C-0002,MetroWave Networks,DIA-1000,1124,US-East Site 7,US-East,1944.22,61,2023-10-16,Chris Kim,Gold
+CIRC-0020,C-0003,NorthPoint Fiber,Point-to-Point,700,US-Central Site 8,US-Central,882.49,31,2023-12-25,Jamie Chen,Gold
+CIRC-0021,C-0003,NorthPoint Fiber,DIA-500,442,US-Central Site 8,US-Central,1099.56,81,2024-03-13,Jamie Chen,Gold
+CIRC-0022,C-0003,NorthPoint Fiber,DIA-500,497,US-Central Site 9,US-Central,995.29,88,2023-11-29,Sarah Lee,Silver
+CIRC-0023,C-0003,NorthPoint Fiber,Point-to-Point,1855,US-Central Site 2,US-Central,3825.18,67,2023-12-07,Sarah Lee,Silver
+CIRC-0024,C-0003,NorthPoint Fiber,DIA-100,149,US-Central Site 9,US-Central,539.67,36,2024-04-03,Morgan Yee,Bronze
+CIRC-0025,C-0003,NorthPoint Fiber,Point-to-Point,1587,US-Central Site 1,US-Central,2204.21,40,2024-03-24,Ash Patel,Bronze
+CIRC-0026,C-0003,NorthPoint Fiber,DIA-100,88,US-Central Site 2,US-Central,426.84,45,2023-11-09,Jamie Chen,Bronze
+CIRC-0027,C-0003,NorthPoint Fiber,Point-to-Point,1004,US-Central Site 9,US-Central,2432.44,96,2023-11-14,Sam O'Connor,Gold
+CIRC-0028,C-0004,Continental Circuit Co,DIA-1000,1004,US-Central Site 5,US-Central,1587.57,94,2026-01-29,Ash Patel,Silver
+CIRC-0029,C-0004,Continental Circuit Co,DIA-100,91,US-Central Site 9,US-Central,433.94,8,2026-04-24,Priya Nair,Silver
+CIRC-0030,C-0004,Continental Circuit Co,DIA-1000,982,US-Central Site 1,US-Central,1589.72,84,2026-02-10,Ash Patel,Gold
+CIRC-0031,C-0004,Continental Circuit Co,DIA-100,89,US-Central Site 5,US-Central,479.72,49,2026-01-21,,Silver
+CIRC-0032,C-0004,Continental Circuit Co,DIA-1000,1198,US-Central Site 6,US-Central,1781.15,35,2026-07-17,Monica Ruiz,Bronze
+CIRC-0033,C-0004,Continental Circuit Co,DIA-100,125,US-Central Site 9,US-Central,490.02,43,2026-02-10,Sam O'Connor,Gold
+CIRC-0034,C-0004,Continental Circuit Co,Point-to-Point,1332,US-Central Site 5,US-Central,3154.98,60,2026-01-23,Alex Ramos,Bronze
+CIRC-0035,C-0004,Continental Circuit Co,DIA-500,505,US-Central Site 9,US-Central,1025.02,72,2026-07-06,Elena Popescu,Bronze
+CIRC-0036,C-0004,Continental Circuit Co,MPLS-Backbone,8571,US-Central Site 4,US-Central,4722.38,61,2026-04-15,Morgan Yee,Silver
+CIRC-0037,C-0004,Continental Circuit Co,DIA-100,128,US-Central Site 6,US-Central,671.27,58,2026-06-30,Elena Popescu,Silver
+CIRC-0038,C-0005,Backbone Systems,DIA-1000,1109,APAC Site 6,APAC,1473.12,46,2024-12-30,Sam O'Connor,Bronze
+CIRC-0039,C-0005,Backbone Systems,MPLS-Backbone,7548,APAC Site 9,APAC,4335.88,68,2024-10-07,Priya Nair,Silver
+CIRC-0040,C-0005,Backbone Systems,DIA-100,118,APAC Site 3,APAC,480.71,71,2024-12-27,Devon Brooks,Silver
+CIRC-0041,C-0005,Backbone Systems,MPLS-Backbone,7534,APAC Site 4,APAC,3119.91,51,2024-11-30,Priya Nair,Silver
+CIRC-0042,C-0005,Backbone Systems,DIA-1000,1163,APAC Site 4,APAC,1819.74,41,2024-08-29,Elena Popescu,Silver
+CIRC-0043,C-0005,Backbone Systems,DIA-500,572,APAC Site 4,APAC,1357.07,11,2024-08-28,Priya Nair,Gold
+CIRC-0044,C-0005,Backbone Systems,MPLS-Backbone,7007,APAC Site 3,APAC,5913.19,54,2024-07-28,Elena Popescu,Gold
+CIRC-0045,C-0005,Backbone Systems,MPLS-Backbone,6049,APAC Site 4,APAC,2842.4,30,2024-07-06,Taylor Grant,Bronze
+CIRC-0046,C-0005,Backbone Systems,DIA-100,134,APAC Site 8,APAC,527.65,96,2024-10-04,,Silver
+CIRC-0047,C-0006,Vertex Telecom,Point-to-Point,1924,US-East Site 1,US-East,2353.9,78,2027-09-16,Alex Ramos,Bronze
+CIRC-0048,C-0006,Vertex Telecom,DIA-1000,1052,US-East Site 3,US-East,1712.06,83,2027-09-16,,Bronze
+CIRC-0049,C-0006,Vertex Telecom,Point-to-Point,1735,US-East Site 2,US-East,3951.24,64,2027-09-16,Ash Patel,Silver
+CIRC-0050,C-0006,Vertex Telecom,DIA-100,129,US-East Site 3,US-East,538.22,81,2027-09-16,Sarah Lee,Silver
+CIRC-0051,C-0006,Vertex Telecom,MPLS-Backbone,9532,US-East Site 2,US-East,3701.16,33,2027-09-16,Sam O'Connor,Bronze
+CIRC-0052,C-0006,Vertex Telecom,Point-to-Point,1655,US-East Site 7,US-East,3302.72,84,2027-09-16,Chris Kim,Gold
+CIRC-0053,C-0006,Vertex Telecom,MPLS-Backbone,3488,US-East Site 4,US-East,1273.42,57,2027-09-16,Ash Patel,Bronze
+CIRC-0054,C-0006,Vertex Telecom,DIA-1000,1094,US-East Site 2,US-East,1416.49,83,2027-09-16,Monica Ruiz,Bronze
+CIRC-0055,C-0007,Lattice Networks,DIA-100,144,US-West Site 7,US-West,964.63,92,2025-02-19,Morgan Yee,Bronze
+CIRC-0056,C-0007,Lattice Networks,DIA-1000,1135,US-West Site 6,US-West,1810.46,96,2024-12-25,Taylor Grant,Silver
+CIRC-0057,C-0007,Lattice Networks,DIA-1000,1175,US-West Site 9,US-West,1929.64,64,2024-11-18,Devon Brooks,Silver
+CIRC-0058,C-0007,Lattice Networks,DIA-500,422,US-West Site 5,US-West,985.25,89,2024-10-29,Elena Popescu,Gold
+CIRC-0059,C-0007,Lattice Networks,MPLS-Backbone,4755,US-West Site 6,US-West,1705.19,53,2024-09-25,Elena Popescu,Gold
+CIRC-0060,C-0007,Lattice Networks,DIA-1000,1032,US-West Site 4,US-West,1381.06,65,2024-10-20,Ash Patel,Bronze
+CIRC-0061,C-0007,Lattice Networks,Point-to-Point,891,US-West Site 9,US-West,1160.74,92,2025-01-25,Jamie Chen,Gold
+CIRC-0062,C-0008,Ridgeline Connect,DIA-500,492,US-East Site 3,US-East,1566.19,5,2024-09-19,Elena Popescu,Bronze
+CIRC-0063,C-0008,Ridgeline Connect,Point-to-Point,1098,US-East Site 8,US-East,2236.52,92,2024-12-02,,Silver
+CIRC-0064,C-0008,Ridgeline Connect,DIA-100,116,US-East Site 5,US-East,514.9,53,2025-03-17,Jamie Chen,Bronze
+CIRC-0065,C-0008,Ridgeline Connect,DIA-1000,1144,US-East Site 4,US-East,1919.51,36,2024-11-25,Morgan Yee,Bronze
+CIRC-0066,C-0008,Ridgeline Connect,Point-to-Point,1122,US-East Site 4,US-East,1461.09,83,2025-01-05,,Gold
+CIRC-0067,C-0008,Ridgeline Connect,Point-to-Point,962,US-East Site 3,US-East,2049.86,86,2024-11-26,Jamie Chen,Gold
+CIRC-0068,C-0008,Ridgeline Connect,Point-to-Point,1378,US-East Site 3,US-East,2158.58,42,2024-12-06,Sam O'Connor,Silver
+CIRC-0069,C-0009,Pinnacle Wireline,DIA-100,139,APAC Site 6,APAC,677.95,64,2024-04-03,Morgan Yee,Silver
+CIRC-0070,C-0009,Pinnacle Wireline,MPLS-Backbone,5586,APAC Site 1,APAC,2928.4,71,2023-12-18,Sarah Lee,Silver
+CIRC-0071,C-0009,Pinnacle Wireline,DIA-100,91,APAC Site 8,APAC,360.16,32,2024-04-22,Alex Ramos,Bronze
+CIRC-0072,C-0009,Pinnacle Wireline,DIA-1000,1195,APAC Site 4,APAC,1348.15,90,2024-04-25,Priya Nair,Gold
+CIRC-0073,C-0009,Pinnacle Wireline,MPLS-Backbone,9504,APAC Site 9,APAC,4119.48,85,2024-02-08,,Gold
+CIRC-0074,C-0009,Pinnacle Wireline,MPLS-Backbone,9938,APAC Site 8,APAC,3750.33,72,2023-11-26,Sarah Lee,Silver
+CIRC-0075,C-0009,Pinnacle Wireline,DIA-100,100,APAC Site 5,APAC,415.96,66,2024-03-05,Monica Ruiz,Silver
+CIRC-0076,C-0009,Pinnacle Wireline,MPLS-Backbone,8664,APAC Site 8,APAC,6415.75,62,2023-12-28,Sarah Lee,Silver
+CIRC-0077,C-0010,Trueline Carrier,Point-to-Point,1540,US-East Site 8,US-East,3227.15,38,2023-12-29,Devon Brooks,Gold
+CIRC-0078,C-0010,Trueline Carrier,MPLS-Backbone,4784,US-East Site 3,US-East,3015.23,30,2024-03-17,Sarah Lee,Gold
+CIRC-0079,C-0010,Trueline Carrier,DIA-1000,1200,US-East Site 8,US-East,1807.14,49,2024-06-21,Taylor Grant,Bronze
+CIRC-0080,C-0010,Trueline Carrier,MPLS-Backbone,4827,US-East Site 7,US-East,2170.86,78,2024-05-18,,Silver
+CIRC-0081,C-0010,Trueline Carrier,DIA-1000,996,US-East Site 9,US-East,1779.4,79,2024-03-10,Morgan Yee,Bronze
+CIRC-0082,C-0010,Trueline Carrier,MPLS-Backbone,2357,US-East Site 8,US-East,1049.93,78,2024-04-20,,Gold

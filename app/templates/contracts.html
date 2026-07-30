@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Contracts{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Contracts</h1>
+    <p class="page-subtitle">{{ contracts | length }} master agreements across telecom, colocation, SaaS, mobility, and support.</p>
+  </div>
+</div>
+
+<div x-data="tableFilter()" style="margin-bottom:14px;">
+  <input class="searchbox" type="text" placeholder="Search vendor, category, contract ID…"
+         x-model="query" @input="filterRows('#contracts-table tbody tr')">
+</div>
+
+<div class="table-wrap">
+  <table id="contracts-table">
+    <thead>
+      <tr>
+        <th>Contract</th>
+        <th>Vendor</th>
+        <th>Category</th>
+        <th>Annual Cost</th>
+        <th>Renewal</th>
+        <th>Clause Risk</th>
+        <th>Findings</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in contracts %}
+      <tr data-search="{{ c.contract_id }} {{ c.vendor }} {{ c.service_type }}">
+        <td><a class="row-link" href="/contracts/{{ c.contract_id }}">{{ c.contract_id }}</a></td>
+        <td>{{ c.vendor }}</td>
+        <td>{{ c.service_type }}</td>
+        <td class="figures">{{ c.annual_cost | money }}</td>
+        <td>
+          <span class="badge badge-{{ 'critical' if c.renewal_risk == 'HIGH' else ('warning' if c.renewal_risk == 'MEDIUM' else 'good') }}">
+            <span class="badge-dot"></span>{{ c.renewal_risk }}
+          </span>
+        </td>
+        <td>
+          {% if c.risk_level == 'Unknown' %}
+            <span class="badge badge-neutral">n/a</span>
+          {% else %}
+            <span class="badge badge-{{ 'critical' if c.risk_level == 'High' else ('warning' if c.risk_level == 'Medium' else 'good') }}">{{ c.risk_level }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if c.finding_count %}
+            {{ c.finding_count }} · <span class="figures">{{ c.finding_savings | money }}</span>/yr
+          {% else %}
+            <span style="color:var(--ink-muted);">none</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

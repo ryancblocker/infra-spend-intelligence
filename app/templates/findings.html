@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Findings{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Findings</h1>
+    <p class="page-subtitle">{{ findings | length }} waste and benchmark-variance findings across the portfolio.</p>
+  </div>
+</div>
+
+{% if category_rows %}
+<div class="card" style="margin-bottom:24px;">
+  <div class="section-title">Savings Opportunity by Category</div>
+  <div style="height:280px;"><canvas id="categoryChart"></canvas></div>
+</div>
+{% endif %}
+
+<div x-data="tableFilter()" style="margin-bottom:14px;">
+  <input class="searchbox" type="text" placeholder="Search category, asset, contract…"
+         x-model="query" @input="filterRows('#findings-table tbody tr')">
+</div>
+
+<div class="table-wrap">
+  <table id="findings-table">
+    <thead>
+      <tr>
+        <th>Finding</th>
+        <th>Category</th>
+        <th>Asset</th>
+        <th>Issue</th>
+        <th>Annual Savings</th>
+        <th>Priority</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr data-search="{{ f.category }} {{ f.asset_id }} {{ f.contract_id }} {{ f.issue }}">
+        <td class="figures">{{ f.finding_id }}</td>
+        <td>{{ f.category | replace('_', ' ') }}</td>
+        <td>
+          {% if f.contract_id %}<a class="row-link" href="/contracts/{{ f.contract_id }}">{{ f.asset_id }}</a>{% else %}{{ f.asset_id }}{% endif %}
+        </td>
+        <td style="max-width:360px;">{{ f.issue }}</td>
+        <td class="figures">{{ f.estimated_annual_savings | money }}</td>
+        <td>
+          <span class="badge badge-{{ 'critical' if f.priority == 'High' else ('warning' if f.priority == 'Medium' else 'good') }}">{{ f.priority }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if category_rows %}
+<script>
+const categoryData = {{ category_rows | tojson }};
+new Chart(document.getElementById('categoryChart'), {
+  type: 'bar',
+  data: {
+    labels: categoryData.map(r => r.category.replace(/_/g, ' ')),
+    datasets: [{
+      label: 'Annual savings opportunity',
+      data: categoryData.map(r => r.annual_savings),
+      backgroundColor: '#ff8a1e',
+      borderRadius: 6,
+      maxBarThickness: 36,
+    }],
+  },
+  options: {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#7a8089', callback: (v) => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.06)' } },
+      y: { ticks: { color: '#b7bcc4' }, grid: { display: false } },
+    },
+  },
+});
+</script>
+{% endif %}
+{% endblock %}
