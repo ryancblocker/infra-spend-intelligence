@@ -1,0 +1,17 @@
+/*
+Purpose: Synthetic SD-WAN and UC contract for clause extraction and risk tagging tests.
+Inputs: Fake legal and commercial contract language.
+Outputs: Unstructured text for contract intelligence parsing.
+Assigned Team Member: JESSIE
+Dependencies: agents/contract_intelligence_agent.py
+*/
+Contract ID: CONTRACT-05
+Vendor: NetGlobal VoiceBridge Alliance
+Category: SD-WAN and Unified Communications
+Renewal Date: 2027-08-31
+Auto-Renew: Yes, 12 month rolling
+Notice Period: 75 days written notice
+Termination Fee: 12% of remaining committed value
+Annual Escalator: 3.5% annual increase
+Minimum Commitment: 85 branch sites and 600 UC users
+Clause Summary: Bundled network and voice service has regional add-on fees and strict disconnect lead times.

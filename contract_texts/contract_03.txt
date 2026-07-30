@@ -1,11 +1,17 @@
 /*
-Purpose: Sample software licensing contract used for escalation and notice extraction.
-Inputs: Synthetic licensing agreement language.
-Outputs: Source text for contract and renewal intelligence.
-Assigned Team Member: SETH
-Dependencies: agents/contract_intelligence_agent.py, agents/renewal_intelligence_agent.py.
+Purpose: Synthetic software enterprise license agreement sample for extraction tests.
+Inputs: Fake legal and commercial contract language.
+Outputs: Unstructured text for contract intelligence parsing.
+Assigned Team Member: JESSIE
+Dependencies: agents/contract_intelligence_agent.py
 */
-ENTERPRISE LICENSE AGREEMENT - SOFTSUITE
-Contract auto-renews yearly unless customer gives 45 days written notice.
-Termination fee is 20% of unpaid contract value.
-List prices increase by 5% at renewal unless renegotiated.
+Contract ID: CONTRACT-03
+Vendor: SoftSuite Enterprise
+Category: Productivity Software Licenses
+Renewal Date: 2026-12-31
+Auto-Renew: Yes, annual
+Notice Period: 45 days written notice
+Termination Fee: 20% of unpaid contract value
+Annual Escalator: 5% list price increase
+Minimum Commitment: 2400 active seats
+Clause Summary: Enterprise collaboration licensing includes storage overage surcharges and annual true-up.

@@ -1,0 +1,17 @@
+/*
+Purpose: Synthetic managed support services agreement for renewal and fee extraction tests.
+Inputs: Fake legal and commercial contract language.
+Outputs: Unstructured text for contract intelligence parsing.
+Assigned Team Member: JESSIE
+Dependencies: agents/contract_intelligence_agent.py
+*/
+Contract ID: CONTRACT-04
+Vendor: DataSphere Managed Services
+Category: Managed Support
+Renewal Date: 2028-01-31
+Auto-Renew: Yes, 24 month terms
+Notice Period: 120 days written notice
+Termination Fee: 18% of remaining annual fees
+Annual Escalator: 4% annual adjustment
+Minimum Commitment: 3200 support tickets per quarter
+Clause Summary: Provider offers 24x7 L2/L3 support with minimum ticket floor and expedited response surcharge.

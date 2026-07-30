@@ -1,11 +1,17 @@
 /*
-Purpose: Sample raw contract text used for clause extraction and renewal parsing.
-Inputs: Synthetic legal language drafted for testing agent logic.
-Outputs: Unstructured text corpus for contract intelligence pipeline.
-Assigned Team Member: SETH
-Dependencies: agents/contract_intelligence_agent.py, agents/renewal_intelligence_agent.py.
+Purpose: Synthetic telecom master agreement sample for clause extraction tests.
+Inputs: Fake legal and commercial contract language.
+Outputs: Unstructured text for contract intelligence parsing.
+Assigned Team Member: JESSIE
+Dependencies: agents/contract_intelligence_agent.py
 */
-MASTER SERVICES AGREEMENT - TELNET
-Term: 36 months with automatic renewal for successive 12-month periods unless either party provides 90 days written notice.
-Termination for convenience incurs a fee equal to 15% of remaining committed charges.
-Pricing escalates by 3% annually beginning year two.
+Contract ID: CONTRACT-01
+Vendor: TelNet Communications
+Category: Telecom Circuit Services
+Renewal Date: 2027-12-31
+Auto-Renew: Yes, 12 month terms
+Notice Period: 90 days written notice
+Termination Fee: 15% of remaining committed charges
+Annual Escalator: 3% per year
+Minimum Commitment: 120 active circuits
+Clause Summary: Carrier delivers MPLS and internet services for national backbone sites with SLA credits.
