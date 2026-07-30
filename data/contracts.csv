@@ -3,7 +3,14 @@
 # Outputs: Contract-level tabular input for discovery, renewal, and intelligence agents.
 # Assigned Team Member: SETH
 # Dependencies: Read by pandas in agents/discovery_agent.py, agents/renewal_intelligence_agent.py.
-contract_id,vendor,service_type,start_date,end_date,annual_cost,auto_renew,notice_days,termination_fee_pct,escalation_pct,status
-C-001,TelNet,Network Circuit,2024-01-01,2027-12-31,240000,Yes,90,15,3,Active
-C-002,CloudHost,Colocation,2023-07-01,2026-06-30,180000,No,60,10,2,Active
-C-003,SoftSuite,Software License,2025-01-01,2026-12-31,120000,Yes,45,20,5,Active
+contract_id,vendor,service_type,start_date,end_date,annual_cost,monthly_cost,auto_renew,notice_days,termination_fee_pct,escalation_pct,owner,status
+C-001,TelNet,Network Circuit,2024-01-01,2027-12-31,420000,35000,Yes,90,15,3,Alex Ramos,Active
+C-002,CloudHost,Colocation,2023-07-01,2026-06-30,540000,45000,No,60,10,2,Jamie Chen,Active
+C-003,SoftSuite,Software License,2025-01-01,2026-12-31,300000,25000,Yes,45,20,5,,Active
+C-004,MobileOne,Mobile Services,2024-04-01,2027-03-31,228000,19000,Yes,60,12,4,Sarah Lee,Active
+C-005,MetroWave,Network Circuit,2022-11-01,2026-10-31,180000,15000,No,30,8,2,,Active
+C-006,DataSphere,Managed Support,2023-02-01,2028-01-31,156000,13000,Yes,90,18,3,Chris Kim,Active
+C-007,CyberSecure,Security License,2024-06-01,2027-05-31,264000,22000,Yes,60,15,4,Ash Patel,Active
+C-008,Equinix,Colocation,2025-02-01,2028-01-31,396000,33000,No,75,10,3,Taylor Grant,Active
+C-009,NetGlobal,SD-WAN Services,2024-09-01,2027-08-31,312000,26000,Yes,60,12,3,,Active
+C-010,VoiceBridge,Unified Communications,2023-05-01,2026-04-30,144000,12000,Yes,45,10,3,Monica Ruiz,Active

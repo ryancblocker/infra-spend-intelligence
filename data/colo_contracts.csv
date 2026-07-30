@@ -3,6 +3,7 @@
 # Outputs: Dataset used for discovery, waste detection, and optimization analysis.
 # Assigned Team Member: SETH
 # Dependencies: pandas, agents/discovery_agent.py, agents/waste_detection_agent.py.
-colo_id,site,rack_count,used_racks,monthly_cost,power_commit_kw,power_used_kw,contract_end_date
-CO-4001,Equinix-NY5,40,26,52000,180,122,2027-04-30
-CO-4002,Digital-REALTY-DFW,30,17,39000,130,69,2026-11-30
+colo_id,site,rack_count,used_racks,monthly_cost,power_commit_kw,power_used_kw,contract_end_date,owner,status
+CO-4001,Equinix-NY5,48,34,62000,220,148,2027-04-30,Core Infra,Active
+CO-4002,Digital-REALTY-DFW,36,20,47000,160,83,2026-11-30,,Active
+CO-4003,Switch-PHX,22,11,31000,95,41,2027-09-30,Core Infra,Active

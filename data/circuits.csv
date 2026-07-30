@@ -3,7 +3,36 @@
 # Outputs: Tabular dataset consumed by discovery and waste detection agents.
 # Assigned Team Member: SETH
 # Dependencies: pandas, agents/discovery_agent.py, agents/waste_detection_agent.py.
-circuit_id,location,bandwidth_mbps,utilization_pct,monthly_cost,provider,status
-T-1001,NYC-DC1,1000,42,6500,TelNet,Active
-T-1002,DAL-DC2,500,18,4100,TelNet,Active
-T-1003,SFO-DC3,200,12,2600,MetroWave,Active
+circuit_id,location,circuit_type,bandwidth_mbps,utilization_pct,monthly_cost,provider,owner,status
+T-1001,NYC-DC1,MPLS,1000,74,8200,TelNet,Ana Lopez,Active
+T-1002,NYC-DC1,Internet,500,21,4800,TelNet,,Active
+T-1003,NYC-DC1,Internet,200,18,2500,MetroWave,Eric Hall,Active
+T-1004,DAL-DC2,MPLS,1000,63,7900,TelNet,Eric Hall,Active
+T-1005,DAL-DC2,Internet,500,14,4600,MetroWave,Eric Hall,Active
+T-1006,DAL-DC2,Backup,200,9,2200,MetroWave,,Active
+T-1007,SFO-DC3,MPLS,1000,58,8100,TelNet,Jordan Fox,Active
+T-1008,SFO-DC3,Internet,500,33,5200,TelNet,Jordan Fox,Active
+T-1009,SFO-DC3,Backup,100,7,1600,MetroWave,Jordan Fox,Active
+T-1010,CHI-DC4,MPLS,1000,69,8000,NetGlobal,Kim Ward,Active
+T-1011,CHI-DC4,Internet,500,24,5000,NetGlobal,Kim Ward,Active
+T-1012,CHI-DC4,Backup,200,11,2300,NetGlobal,,Active
+T-1013,ATL-HQ,Internet,300,55,3400,MetroWave,Dan Reyes,Active
+T-1014,ATL-HQ,Backup,100,19,1500,MetroWave,Dan Reyes,Active
+T-1015,SEA-HQ,Internet,300,61,3600,TelNet,Tina Park,Active
+T-1016,SEA-HQ,Backup,100,15,1700,TelNet,Tina Park,Active
+T-1017,PHX-BR1,Internet,200,48,2800,NetGlobal,,Active
+T-1018,PHX-BR1,Backup,100,10,1400,NetGlobal,,Active
+T-1019,BOS-BR2,Internet,200,52,2900,MetroWave,Lee Cook,Active
+T-1020,BOS-BR2,Backup,100,17,1500,MetroWave,Lee Cook,Active
+T-1021,MIA-BR3,Internet,200,46,2850,TelNet,Noah Bell,Active
+T-1022,MIA-BR3,Backup,100,12,1450,TelNet,Noah Bell,Active
+T-1023,DEN-BR4,Internet,200,57,2950,NetGlobal,Jay Sun,Active
+T-1024,DEN-BR4,Backup,100,16,1500,NetGlobal,Jay Sun,Active
+T-1025,LA-BR5,Internet,300,64,3900,MetroWave,Samir Das,Active
+T-1026,LA-BR5,Backup,100,8,1700,MetroWave,,Active
+T-1027,MIN-BR6,Internet,150,41,2300,TelNet,Otis Green,Active
+T-1028,MIN-BR6,Backup,50,6,1100,TelNet,,Active
+T-1029,AUS-BR7,Internet,200,53,3000,NetGlobal,Rae Martin,Active
+T-1030,AUS-BR7,Backup,100,13,1600,NetGlobal,Rae Martin,Active
+T-1031,POR-BR8,Internet,150,44,2250,MetroWave,April Tate,Active
+T-1032,POR-BR8,Backup,50,5,1050,MetroWave,,Active

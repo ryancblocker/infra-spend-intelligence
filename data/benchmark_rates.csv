@@ -1,10 +1,12 @@
-# Purpose: Market benchmark rates for telecom, software, and colo services.
+# Purpose: Market benchmark rates for telecom, software, mobile, colo, and support services.
 # Inputs: Synthetic benchmark baseline values.
 # Outputs: Cost comparison references for waste and optimization scoring.
 # Assigned Team Member: SETH
 # Dependencies: pandas, agents/waste_detection_agent.py, agents/financial_optimization_agent.py.
-service_type,unit,benchmark_rate,source_year
-Network Circuit,per_mbps_month,4.8,2026
-Software License,per_user_month,22.5,2026
-Mobile Line,per_line_month,62.0,2026
-Colocation,per_rack_month,1450.0,2026
+category,unit,benchmark_rate,source_year,notes
+telecom_circuit,per_mbps_month,6.2,2026,Market median for enterprise blended WAN
+software_license,per_user_month,24.0,2026,Average seat price across collaboration and security
+mobile_line,per_line_month,58.0,2026,Corporate pooled plan benchmark
+colo,per_rack_month,1550.0,2026,Tier-3 metro average
+managed_support,per_ticket,42.0,2026,Outsourced support blended rate
+sdwan,per_site_month,2200.0,2026,Typical SD-WAN managed service per branch
