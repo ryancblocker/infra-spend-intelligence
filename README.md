@@ -59,12 +59,12 @@ Four owned areas, split along the architecture's natural seams (data/rules vs.
 LLM reasoning, backend vs. frontend). Cross-area PRs are normal - these are
 primary owners, not walls.
 
-| Area | Owns | Files | First thing to check |
-|---|---|---|---|
-| **Data & Rules Agents** | Synthetic dataset realism, benchmark accuracy, and the four deterministic/rules-based agents | `app/data/` (`generate_seed_data.py`, `seed_db.py`, `seed/*.csv`, `contract_docs/*.txt`), `app/agents/discovery.py`, `waste.py`, `benchmark.py`, `renewal.py` | Run `python app/data/generate_seed_data.py` and sanity-check the printed totals/category mix still look like a believable portfolio |
-| **LLM & Reasoning Agents** | Prompt quality, structured-output reliability, RAG grounding, and the four LLM-backed agents | `app/agents/extraction.py`, `optimization.py`, `critic.py`, `narrator.py`, `app/tools/llm_client.py`, `vector_store.py` | Install Ollama (`docs/setup.md`), pull `qwen3:8b` + `nomic-embed-text`, and compare a pipeline run in `ollama` mode vs. the offline fallback |
-| **Backend & Orchestration** | Pipeline wiring, API routes, SSE streaming, persistence | `app/orchestrator/` (`graph.py`, `state.py`, `events.py`, `persistence.py`), `app/main.py`, `app/views.py`, `app/tools/dataset_tools.py`, `app/config.py` | Trigger `GET /api/run` and confirm every agent's SSE event lands in the right order and `runtime/last_run.json` round-trips correctly |
-| **Frontend, Docs & QA** | Visual design, UI/UX, documentation, test coverage | `app/templates/`, `app/static/`, `docs/`, `tests/`, `README.md` | Click through all 6 pages in both light and dark theme, then run `pytest tests/` |
+| Owner | Area | Owns | Files | First thing to check |
+|---|---|---|---|---|
+| **Seth** | Data & Rules Agents | Synthetic dataset realism, benchmark accuracy, and the four deterministic/rules-based agents | `app/data/` (`generate_seed_data.py`, `seed_db.py`, `seed/*.csv`, `contract_docs/*.txt`), `app/agents/discovery.py`, `waste.py`, `benchmark.py`, `renewal.py` | Run `python app/data/generate_seed_data.py` and sanity-check the printed totals/category mix still look like a believable portfolio |
+| **Sofia** | LLM & Reasoning Agents | Prompt quality, structured-output reliability, RAG grounding, and the four LLM-backed agents | `app/agents/extraction.py`, `optimization.py`, `critic.py`, `narrator.py`, `app/tools/llm_client.py`, `vector_store.py` | Install Ollama (`docs/setup.md`), pull `qwen3:8b` + `nomic-embed-text`, and compare a pipeline run in `ollama` mode vs. the offline fallback |
+| **Jessie** | Backend & Orchestration | Pipeline wiring, API routes, SSE streaming, persistence | `app/orchestrator/` (`graph.py`, `state.py`, `events.py`, `persistence.py`), `app/main.py`, `app/views.py`, `app/tools/dataset_tools.py`, `app/config.py` | Trigger `GET /api/run` and confirm every agent's SSE event lands in the right order and `runtime/last_run.json` round-trips correctly |
+| **Ryan** | Frontend, Docs & QA | Visual design, UI/UX, documentation, test coverage | `app/templates/`, `app/static/`, `docs/`, `tests/`, `README.md` | Click through all 6 pages in both light and dark theme, then run `pytest tests/` |
 
 ## Tests
 
