@@ -1,0 +1,11 @@
+/*
+Purpose: Sample colocation contract language for renewal and termination analysis.
+Inputs: Synthetic legal and commercial text.
+Outputs: Unstructured textual input for NLP-like parsing routines.
+Assigned Team Member: SETH
+Dependencies: agents/contract_intelligence_agent.py, agents/renewal_intelligence_agent.py.
+*/
+COLOCATION AGREEMENT - CLOUDHOST
+Initial term ends on 2026-06-30. No auto-renewal clause. Customer may terminate with 60 days notice.
+Early termination fee equals 10% of remaining monthly recurring charges.
+Power overage billed at market rates. Annual escalation capped at 2%.

@@ -1,0 +1,9 @@
+# Purpose: Software license inventory with assignment and usage statistics.
+# Inputs: Synthetic license counts and utilization fields.
+# Outputs: Tabular dataset used for waste detection and financial optimization.
+# Assigned Team Member: SETH
+# Dependencies: pandas, agents/discovery_agent.py, agents/waste_detection_agent.py.
+license_id,product,total_licenses,assigned_licenses,active_users,annual_cost,status
+L-2001,SecureEndpoint,1200,1100,760,360000,Active
+L-2002,AnalyticsPro,400,310,155,140000,Active
+L-2003,CollabSuite,900,875,620,280000,Active

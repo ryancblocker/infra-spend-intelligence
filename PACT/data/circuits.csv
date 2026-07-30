@@ -1,0 +1,9 @@
+# Purpose: Telecom circuit inventory including utilization and spend metrics.
+# Inputs: Synthetic circuit asset records.
+# Outputs: Tabular dataset consumed by discovery and waste detection agents.
+# Assigned Team Member: SETH
+# Dependencies: pandas, agents/discovery_agent.py, agents/waste_detection_agent.py.
+circuit_id,location,bandwidth_mbps,utilization_pct,monthly_cost,provider,status
+T-1001,NYC-DC1,1000,42,6500,TelNet,Active
+T-1002,DAL-DC2,500,18,4100,TelNet,Active
+T-1003,SFO-DC3,200,12,2600,MetroWave,Active

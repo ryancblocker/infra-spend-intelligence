@@ -1,0 +1,9 @@
+# Purpose: Mobile line inventory with usage and cost insights.
+# Inputs: Synthetic enterprise mobility records.
+# Outputs: Tabular dataset for discovery and waste detection workflows.
+# Assigned Team Member: SETH
+# Dependencies: pandas, agents/discovery_agent.py, agents/waste_detection_agent.py.
+line_id,employee_id,plan_type,monthly_cost,avg_data_gb,last_30d_voice_mins,status
+M-3001,E-10011,Unlimited,85,2.4,12,Active
+M-3002,E-10012,Unlimited,85,0.1,0,Active
+M-3003,E-10013,Business,70,9.7,220,Active

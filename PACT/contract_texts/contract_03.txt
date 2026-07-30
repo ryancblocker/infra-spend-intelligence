@@ -1,0 +1,11 @@
+/*
+Purpose: Sample software licensing contract used for escalation and notice extraction.
+Inputs: Synthetic licensing agreement language.
+Outputs: Source text for contract and renewal intelligence.
+Assigned Team Member: SETH
+Dependencies: agents/contract_intelligence_agent.py, agents/renewal_intelligence_agent.py.
+*/
+ENTERPRISE LICENSE AGREEMENT - SOFTSUITE
+Contract auto-renews yearly unless customer gives 45 days written notice.
+Termination fee is 20% of unpaid contract value.
+List prices increase by 5% at renewal unless renegotiated.

@@ -1,0 +1,9 @@
+# Purpose: Synthetic contract inventory with pricing and term attributes for infrastructure agreements.
+# Inputs: Manually curated synthetic records by Data & Discovery Lead.
+# Outputs: Contract-level tabular input for discovery, renewal, and intelligence agents.
+# Assigned Team Member: SETH
+# Dependencies: Read by pandas in agents/discovery_agent.py, agents/renewal_intelligence_agent.py.
+contract_id,vendor,service_type,start_date,end_date,annual_cost,auto_renew,notice_days,termination_fee_pct,escalation_pct,status
+C-001,TelNet,Network Circuit,2024-01-01,2027-12-31,240000,Yes,90,15,3,Active
+C-002,CloudHost,Colocation,2023-07-01,2026-06-30,180000,No,60,10,2,Active
+C-003,SoftSuite,Software License,2025-01-01,2026-12-31,120000,Yes,45,20,5,Active
