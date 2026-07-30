@@ -12,18 +12,26 @@ Dependencies: Project README, agent scripts, and output schemas.
 1. Discovery Agent reads source CSV files and creates `outputs/discovery_output.json`.
 2. Waste Detection Agent reads discovery + source data and creates `outputs/waste_findings.json`.
 3. Contract Intelligence Agent reads `contract_texts/` and creates `outputs/contract_intelligence_output.json`.
-4. Financial Optimization Agent combines discovery, waste, and contract intelligence outputs to create `outputs/financial_optimization_output.json`.
-5. Dashboard pages consume these JSON files to show spend, waste opportunities, and top recommendations.
+4. Renewal Intelligence Agent reads contracts plus prior outputs to create `outputs/renewal_intelligence_output.json` when available.
+5. Scenario Comparison Agent evaluates keep/cancel/renegotiate outcomes in `outputs/scenario_comparison_output.json` when available.
+6. Financial Optimization Agent combines discovery, waste, and contract intelligence outputs to create `outputs/financial_optimization_output.json`.
+7. Executive Summary Agent creates `outputs/executive_summary.json` when available.
+8. Dashboard pages consume these JSON files to show spend, waste opportunities, and top recommendations.
 
 ## Agent Flow
-Discovery Agent -> Waste Detection Agent -> Contract Intelligence Agent -> Financial Optimization Agent -> Dashboard
+Discovery Agent -> Waste Detection Agent -> Contract Intelligence Agent -> Renewal Intelligence Agent -> Scenario Comparison Agent -> Financial Optimization Agent -> Executive Summary Agent -> Dashboard
 
-## Suggested Commands
-- python agents/discovery_agent.py
-- python agents/waste_detection_agent.py
-- python agents/contract_intelligence_agent.py
-- python agents/financial_optimization_agent.py
+## Run From Terminal
 - streamlit run ui/app.py
+
+## Run Pipeline From Dashboard
+1. Open the dashboard with `streamlit run ui/app.py`.
+2. Click `Run Pipeline`.
+3. Wait for pipeline completion and refreshed output JSON files.
+4. Review executive metrics, findings, scenarios, and recommendations.
+
+Run Pipeline button note:
+The `Run Pipeline` button executes the full agent workflow and refreshes JSON outputs used by the dashboard.
 
 ## TODO (SOFIA)
 - Add workflow automation script
