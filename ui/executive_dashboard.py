@@ -74,7 +74,7 @@ with overview_tab:
         renewal_df = pd.DataFrame(renewal_items)
         st.dataframe(
             renewal_df[["contract_id", "renewal_date", "days_remaining", "risk", "recommended_action"]],
-            use_container_width=True,
+            width="stretch",
         )
     else:
         st.info("No renewal risk data available yet. Run renewal_intelligence_agent.py.")
@@ -87,7 +87,7 @@ with savings_tab:
         savings_df = pd.DataFrame(savings_items)
         st.dataframe(
             savings_df[["rank", "asset_id", "recommendation", "annual_savings", "confidence"]],
-            use_container_width=True,
+            width="stretch",
         )
 
         st.subheader("Annual Savings by Top 10")
@@ -113,7 +113,7 @@ with scenario_tab:
                     "recommendation",
                 ]
             ],
-            use_container_width=True,
+            width="stretch",
         )
 
         chart_df = scenario_df[["contract", "keep_cost", "cancel_cost", "renegotiate_cost"]].set_index("contract")
