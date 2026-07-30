@@ -1,0 +1,41 @@
+{
+  "executive_summary": "Infra Spend Intelligence identified $1,707,516 in annual savings opportunities against a baseline annual spend of $8,480,040. 3 contracts are currently high renewal risk, and scenario modeling indicates up to $4,631,880 in projected value from prioritized contract decisions. Immediate action on top opportunities could reduce recurring spend by approximately 20.1% annually.",
+  "top_risks": [
+    "3 contracts have HIGH renewal risk and need immediate action.",
+    "Underutilized or over-priced services are creating avoidable recurring spend."
+  ],
+  "top_savings_opportunities": [
+    {
+      "rank": 1,
+      "recommendation": "Cancel",
+      "asset_id": "L-2002",
+      "annual_savings": 578088.0,
+      "confidence": "High"
+    },
+    {
+      "rank": 2,
+      "recommendation": "Renegotiate",
+      "asset_id": "L-2002",
+      "annual_savings": 530712.0,
+      "confidence": "Medium"
+    },
+    {
+      "rank": 3,
+      "recommendation": "Renegotiate",
+      "asset_id": "L-2006",
+      "annual_savings": 417012.0,
+      "confidence": "Medium"
+    }
+  ],
+  "immediate_actions": [
+    "Execute 'Cancel' for L-2002 to target ~$578,088 annual savings.",
+    "Execute 'Renegotiate' for L-2002 to target ~$530,712 annual savings.",
+    "Execute 'Renegotiate' for L-2006 to target ~$417,012 annual savings."
+  ],
+  "recommended_next_steps": [
+    "Confirm business owner approvals for top 5 optimization actions.",
+    "Launch renegotiation workstream for benchmark-variance services.",
+    "Create weekly renewal review for contracts inside 90-day windows.",
+    "Track realized vs projected savings in the executive dashboard."
+  ]
+}
