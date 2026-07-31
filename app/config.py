@@ -39,6 +39,26 @@ REFERENCE_DATE = os.environ.get("PACT_REFERENCE_DATE", "")
 HIGH_VALUE_THRESHOLD = 50_000
 LOW_SAVINGS_THRESHOLD = 10_000
 
+# --- Agent loop controls ---
+# Both are hard caps enforced in Python, not left to the model's judgement: a
+# small local model cannot reliably decide when it is finished.
+MAX_EXTRACTION_ITERS = int(os.environ.get("PACT_MAX_EXTRACTION_ITERS", "3"))
+MAX_REVISIONS = int(os.environ.get("PACT_MAX_REVISIONS", "1"))
+LLM_TIMEOUT_SECONDS = float(os.environ.get("PACT_LLM_TIMEOUT", "120"))
+
+# --- Retrieval ---
+RETRIEVAL_K = int(os.environ.get("PACT_RETRIEVAL_K", "3"))
+# Distances from nomic-embed-text and from the hashed fallback are not on the
+# same scale, so the floor is chosen by whichever embedding path produced the
+# vector. See vector_store.default_floor().
+RELEVANCE_FLOOR_EMBED = float(os.environ.get("PACT_RELEVANCE_FLOOR_EMBED", "0.75"))
+RELEVANCE_FLOOR_HASHED = float(os.environ.get("PACT_RELEVANCE_FLOOR_HASHED", "0.95"))
+
+# --- Observability & caching ---
+LLM_LOG_PATH = RUNTIME_DIR / "llm_calls.jsonl"
+EXTRACTION_CACHE_PATH = RUNTIME_DIR / "extraction_cache.json"
+EXTRACTION_CACHE_ENABLED = os.environ.get("PACT_EXTRACTION_CACHE", "1") != "0"
+
 
 def ensure_runtime_dirs() -> None:
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)

@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import time
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import TypeVar
 
@@ -23,6 +26,47 @@ from app import config
 T = TypeVar("T", bound=BaseModel)
 
 EMBED_DIM = 256
+
+THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+
+def strip_think(text: str) -> str:
+    """Remove qwen3-style <think> reasoning blocks. Also handles the truncated
+    case where an opening tag is emitted but the model is cut off before
+    closing it - otherwise the model's internal monologue leaks into the
+    executive summary."""
+    cleaned = THINK_TAG_RE.sub("", text)
+    lowered = cleaned.lower()
+    if "<think>" in lowered:
+        cleaned = cleaned[: lowered.index("<think>")]
+    return cleaned.strip()
+
+
+def log_call(agent: str, mode: str, model: str, attempt: int, ok: bool,
+             latency_ms: float, error_class: str = "", prompt_chars: int = 0,
+             output_chars: int = 0) -> None:
+    """Append one structured record per LLM call to runtime/llm_calls.jsonl.
+
+    Failures still return None to callers - the fallback contract is unchanged -
+    but they stop being invisible, which is what makes it possible to prove the
+    LLM path works rather than assume it."""
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "agent": agent, "mode": mode, "model": model, "attempt": attempt,
+        "ok": ok, "latency_ms": round(latency_ms, 1), "error_class": error_class,
+        "prompt_chars": prompt_chars, "output_chars": output_chars,
+    }
+    try:
+        config.ensure_runtime_dirs()
+        with config.LLM_LOG_PATH.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
+    except Exception:
+        pass  # observability must never break a pipeline run
+
+
+def embedding_backend() -> str:
+    """Which embedding path is live: 'ollama' (real) or 'hashed' (fallback)."""
+    return "ollama" if get_mode() == "ollama" else "hashed"
 
 
 @lru_cache(maxsize=1)
