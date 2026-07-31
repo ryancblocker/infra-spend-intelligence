@@ -466,3 +466,77 @@ tbody a.row-link:hover { color: var(--brand); }
   font-weight: 700;
   cursor: pointer;
 }
+
+/* --- Clause provenance & agent trace (contract detail) --------------------- */
+
+.citation {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--ink-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.injection-warning {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--status-critical);
+  border-radius: 8px;
+  background: var(--status-critical-bg);
+  color: var(--status-critical);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.agent-trace {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.agent-trace > summary {
+  cursor: pointer;
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 500;
+  list-style: none;
+}
+
+.agent-trace > summary::-webkit-details-marker { display: none; }
+
+.agent-trace > summary::before {
+  content: "\25B8";
+  display: inline-block;
+  margin-right: 7px;
+  color: var(--ink-muted);
+  transition: transform 0.15s ease;
+}
+
+.agent-trace[open] > summary::before { transform: rotate(90deg); }
+.agent-trace > summary:hover { color: var(--ink-primary, var(--ink-secondary)); }
+
+.trace-body {
+  margin-top: 10px;
+  padding-left: 18px;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.trace-queries {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.trace-queries li {
+  margin-bottom: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+}

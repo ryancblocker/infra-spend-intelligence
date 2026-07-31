@@ -40,13 +40,62 @@
         <span class="badge badge-{{ 'critical' if extracted.risk_level == 'High' else ('warning' if extracted.risk_level == 'Medium' else 'good') }}">{{ extracted.risk_level }}</span>
       </p>
       <p style="font-size:13.5px; color:var(--ink-secondary);">{{ extracted.risk_rationale }}</p>
-      {% if extracted.sla_summary %}<p><strong>SLA:</strong> {{ extracted.sla_summary }}</p>{% endif %}
-      {% if extracted.liability_cap_summary %}<p><strong>Liability cap:</strong> {{ extracted.liability_cap_summary }}</p>{% endif %}
+      {% if extracted.injection_flags %}
+        <div class="injection-warning">
+          <strong>Instruction-like text detected in this document.</strong>
+          It was treated as data, not instructions:
+          {{ extracted.injection_flags | join(', ') }}
+        </div>
+      {% endif %}
+
+      {% macro cited(field, label, value) %}
+        {% if value %}
+          <p>
+            <strong>{{ label }}:</strong> {{ value }}
+            {% set src = extracted.field_sources.get(field) %}
+            {% if src %}
+              <span class="citation" title="{{ src.excerpt }}">&#167; {{ src.heading or 'source clause' }}</span>
+            {% endif %}
+          </p>
+        {% endif %}
+      {% endmacro %}
+
+      {{ cited('renewal_date', 'Renewal date', extracted.renewal_date) }}
+      {{ cited('notice_period_days', 'Notice period', extracted.notice_period_days and extracted.notice_period_days ~ ' days') }}
+      {{ cited('termination_fee_pct', 'Termination fee', extracted.termination_fee_pct and extracted.termination_fee_pct ~ '%') }}
+      {{ cited('annual_escalator_pct', 'Annual escalator', extracted.annual_escalator_pct and extracted.annual_escalator_pct ~ '%') }}
+      {{ cited('sla_summary', 'SLA', extracted.sla_summary) }}
+      {{ cited('liability_cap_summary', 'Liability cap', extracted.liability_cap_summary) }}
+
       <div class="chip-row">
         {% if extracted.has_mfn_clause %}<span class="chip active">Most-favored pricing</span>{% endif %}
         {% if extracted.has_price_protection_clause %}<span class="chip active">Price protection</span>{% endif %}
         {% if extracted.minimum_commitment %}<span class="chip active">{{ extracted.minimum_commitment }}</span>{% endif %}
       </div>
+
+      <details class="agent-trace">
+        <summary>Agent trace &mdash; {{ extracted.extraction_iterations }} investigation
+          {{ 'pass' if extracted.extraction_iterations == 1 else 'passes' }},
+          {{ extracted.field_sources | length }} cited {{ 'field' if extracted.field_sources | length == 1 else 'fields' }}</summary>
+        <div class="trace-body">
+          <p>The extraction agent retrieves clauses, checks which required terms are still
+            missing, and issues its own follow-up queries for just those gaps &mdash; capped at
+            {{ extracted.extraction_iterations }} {{ 'pass' if extracted.extraction_iterations == 1 else 'passes' }} here.</p>
+          {% if extracted.unresolved_fields %}
+            <p><strong>Not found in this document:</strong>
+              {{ extracted.unresolved_fields | join(', ') }}
+              &mdash; reported as unresolved rather than guessed.</p>
+          {% else %}
+            <p><strong>All required terms resolved.</strong></p>
+          {% endif %}
+          {% if extracted.retrieval_queries %}
+            <p><strong>Retrieval queries issued ({{ extracted.retrieval_queries | length }}):</strong></p>
+            <ul class="trace-queries">
+              {% for q in extracted.retrieval_queries %}<li>{{ q }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </details>
     {% else %}
       <div class="empty-state">No source contract document for this agreement, or the pipeline hasn't run yet.</div>
     {% endif %}
