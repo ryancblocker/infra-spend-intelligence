@@ -98,68 +98,96 @@ def _probe_ollama() -> bool:
 # ---------------------------------------------------------------------------
 
 
-def chat_structured(system: str, user: str, schema: type[T]) -> T | None:
+REPAIR_TEMPLATE = (
+    "Your previous reply failed schema validation with this error:\n{error}\n"
+    "Reply with ONLY valid JSON matching the required schema. No prose, no tags, "
+    "no explanation."
+)
+
+
+def chat_structured(system: str, user: str, schema: type[T], agent: str = "unknown") -> T | None:
     """Ask the active LLM backend for output matching `schema`. Returns None on
     any failure so the caller can fall back to deterministic logic."""
     mode = get_mode()
     if mode == "ollama":
-        return _ollama_structured(system, user, schema)
+        return _ollama_structured(system, user, schema, agent)
     if mode == "anthropic":
-        return _anthropic_structured(system, user, schema)
+        return _anthropic_structured(system, user, schema, agent)
     return None
 
 
-def _ollama_structured(system: str, user: str, schema: type[T]) -> T | None:
-    try:
-        import ollama
+def _ollama_client():
+    import ollama
 
-        client = ollama.Client(host=config.OLLAMA_HOST)
+    return ollama.Client(host=config.OLLAMA_HOST, timeout=config.LLM_TIMEOUT_SECONDS)
+
+
+def _ollama_structured(system: str, user: str, schema: type[T], agent: str) -> T | None:
+    last_error = ""
+    for attempt in (1, 2):
+        started = time.perf_counter()
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-        response = client.chat(model=config.OLLAMA_CHAT_MODEL, messages=messages,
-                                format=schema.model_json_schema())
-        return schema.model_validate_json(response["message"]["content"])
-    except Exception:
+        if attempt == 2:
+            # Feeding the model its actual validation error, rather than a generic
+            # "that wasn't JSON", materially improves recovery on small models.
+            messages.append({"role": "user", "content": REPAIR_TEMPLATE.format(error=last_error)})
         try:
-            # one retry nudging the model to correct its own JSON
-            import ollama
+            response = _ollama_client().chat(
+                model=config.OLLAMA_CHAT_MODEL, messages=messages,
+                format=schema.model_json_schema(),
+            )
+            content = strip_think(response["message"]["content"])
+            parsed = schema.model_validate_json(content)
+            log_call(agent, "ollama", config.OLLAMA_CHAT_MODEL, attempt, True,
+                     (time.perf_counter() - started) * 1000,
+                     prompt_chars=len(system) + len(user), output_chars=len(content))
+            return parsed
+        except Exception as exc:
+            last_error = str(exc)[:400]
+            log_call(agent, "ollama", config.OLLAMA_CHAT_MODEL, attempt, False,
+                     (time.perf_counter() - started) * 1000, error_class=type(exc).__name__,
+                     prompt_chars=len(system) + len(user))
+    return None
 
-            client = ollama.Client(host=config.OLLAMA_HOST)
-            messages = [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-                {"role": "user", "content": "Your previous response was not valid JSON for the required schema. Reply with valid JSON only."},
-            ]
-            response = client.chat(model=config.OLLAMA_CHAT_MODEL, messages=messages,
-                                    format=schema.model_json_schema())
-            return schema.model_validate_json(response["message"]["content"])
-        except Exception:
-            return None
 
+def _anthropic_structured(system: str, user: str, schema: type[T], agent: str) -> T | None:
+    tool_name = "emit_result"
+    last_error = ""
+    for attempt in (1, 2):
+        started = time.perf_counter()
+        messages = [{"role": "user", "content": user}]
+        if attempt == 2:
+            messages.append({"role": "user", "content": REPAIR_TEMPLATE.format(error=last_error)})
+        try:
+            import anthropic
 
-def _anthropic_structured(system: str, user: str, schema: type[T]) -> T | None:
-    try:
-        import anthropic
-
-        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
-        tool_name = "emit_result"
-        response = client.messages.create(
-            model=config.ANTHROPIC_MODEL,
-            max_tokens=2048,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-            tools=[{
-                "name": tool_name,
-                "description": f"Emit the result matching the {schema.__name__} schema.",
-                "input_schema": schema.model_json_schema(),
-            }],
-            tool_choice={"type": "tool", "name": tool_name},
-        )
-        for block in response.content:
-            if block.type == "tool_use" and block.name == tool_name:
-                return schema.model_validate(block.input)
-        return None
-    except Exception:
-        return None
+            client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+            response = client.messages.create(
+                model=config.ANTHROPIC_MODEL,
+                max_tokens=2048,
+                system=system,
+                messages=messages,
+                tools=[{
+                    "name": tool_name,
+                    "description": f"Emit the result matching the {schema.__name__} schema.",
+                    "input_schema": schema.model_json_schema(),
+                }],
+                tool_choice={"type": "tool", "name": tool_name},
+            )
+            for block in response.content:
+                if block.type == "tool_use" and block.name == tool_name:
+                    parsed = schema.model_validate(block.input)
+                    log_call(agent, "anthropic", config.ANTHROPIC_MODEL, attempt, True,
+                             (time.perf_counter() - started) * 1000,
+                             prompt_chars=len(system) + len(user))
+                    return parsed
+            raise ValueError("no tool_use block in response")
+        except Exception as exc:
+            last_error = str(exc)[:400]
+            log_call(agent, "anthropic", config.ANTHROPIC_MODEL, attempt, False,
+                     (time.perf_counter() - started) * 1000, error_class=type(exc).__name__,
+                     prompt_chars=len(system) + len(user))
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -167,17 +195,22 @@ def _anthropic_structured(system: str, user: str, schema: type[T]) -> T | None:
 # ---------------------------------------------------------------------------
 
 
-def plain_complete(system: str, user: str) -> str | None:
+def plain_complete(system: str, user: str, agent: str = "unknown") -> str | None:
     mode = get_mode()
+    started = time.perf_counter()
     if mode == "ollama":
         try:
-            import ollama
-
-            client = ollama.Client(host=config.OLLAMA_HOST)
             messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-            response = client.chat(model=config.OLLAMA_CHAT_MODEL, messages=messages)
-            return response["message"]["content"]
-        except Exception:
+            response = _ollama_client().chat(model=config.OLLAMA_CHAT_MODEL, messages=messages)
+            text = strip_think(response["message"]["content"])
+            log_call(agent, "ollama", config.OLLAMA_CHAT_MODEL, 1, True,
+                     (time.perf_counter() - started) * 1000,
+                     prompt_chars=len(system) + len(user), output_chars=len(text))
+            return text
+        except Exception as exc:
+            log_call(agent, "ollama", config.OLLAMA_CHAT_MODEL, 1, False,
+                     (time.perf_counter() - started) * 1000, error_class=type(exc).__name__,
+                     prompt_chars=len(system) + len(user))
             return None
     if mode == "anthropic":
         try:
@@ -188,8 +221,15 @@ def plain_complete(system: str, user: str) -> str | None:
                 model=config.ANTHROPIC_MODEL, max_tokens=1024, system=system,
                 messages=[{"role": "user", "content": user}],
             )
-            return "".join(b.text for b in response.content if b.type == "text")
-        except Exception:
+            text = strip_think("".join(b.text for b in response.content if b.type == "text"))
+            log_call(agent, "anthropic", config.ANTHROPIC_MODEL, 1, True,
+                     (time.perf_counter() - started) * 1000,
+                     prompt_chars=len(system) + len(user), output_chars=len(text))
+            return text
+        except Exception as exc:
+            log_call(agent, "anthropic", config.ANTHROPIC_MODEL, 1, False,
+                     (time.perf_counter() - started) * 1000, error_class=type(exc).__name__,
+                     prompt_chars=len(system) + len(user))
             return None
     return None
 
@@ -202,10 +242,7 @@ def plain_complete(system: str, user: str) -> str | None:
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if get_mode() == "ollama":
         try:
-            import ollama
-
-            client = ollama.Client(host=config.OLLAMA_HOST)
-            response = client.embed(model=config.OLLAMA_EMBED_MODEL, input=texts)
+            response = _ollama_client().embed(model=config.OLLAMA_EMBED_MODEL, input=texts)
             return [list(vec) for vec in response["embeddings"]]
         except Exception:
             pass
