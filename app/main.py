@@ -27,7 +27,13 @@ from app.orchestrator.events import DONE_SENTINEL, new_queue  # noqa: E402
 from app.orchestrator.graph import run_pipeline  # noqa: E402
 from app.orchestrator.state import PipelineState  # noqa: E402
 from app.tools import dataset_tools, vector_store  # noqa: E402
-from app.tools.llm_client import get_mode, plain_complete  # noqa: E402
+from app.tools.llm_client import (  # noqa: E402
+    UNTRUSTED_PREAMBLE,
+    get_mode,
+    plain_complete,
+    scan_for_injection,
+    wrap_untrusted,
+)
 
 app = FastAPI(title="PACT - Portfolio Agentic Contract Tracker")
 app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
@@ -159,6 +165,7 @@ ASK_SYSTEM_PROMPT = (
     "question using ONLY the contract clause excerpts provided as context. Cite contract IDs in "
     "brackets like [C-0012] when referencing a specific contract. If the context doesn't contain "
     "enough information to answer, say so plainly rather than guessing."
+    "\n\n" + UNTRUSTED_PREAMBLE
 )
 
 
@@ -171,17 +178,31 @@ async def api_ask(payload: AskRequest):
     hits = await asyncio.to_thread(vector_store.search, payload.question, 6)
     mode = get_mode()
 
+    # Retrieved clause text is third-party data, not instructions. Delimit it
+    # before it reaches the model, and surface anything that looks like an
+    # attempt to steer the agent rather than trusting it silently.
+    injection_markers = sorted({m for h in hits for m in scan_for_injection(h["text"])})
+
     if mode != "offline" and hits:
-        context = "\n\n".join(f"[{h['contract_id']}] {h['text']}" for h in hits)
+        context = wrap_untrusted(
+            "\n\n".join(f"[{h['contract_id']} {h.get('heading', '')}] {h['text']}" for h in hits)
+        )
         answer = await asyncio.to_thread(
-            plain_complete, ASK_SYSTEM_PROMPT, f"Question: {payload.question}\n\nContext:\n{context}",
+            plain_complete, ASK_SYSTEM_PROMPT,
+            f"Question: {payload.question}\n\nContext:\n{context}", "ask",
         )
         if not answer:
             answer = _offline_answer(hits)
     else:
         answer = _offline_answer(hits)
 
-    return {"answer": answer, "sources": sorted({h["contract_id"] for h in hits}), "mode": mode}
+    response = {"answer": answer, "sources": sorted({h["contract_id"] for h in hits}), "mode": mode}
+    if injection_markers:
+        response["warning"] = (
+            "Instruction-like text was detected in the retrieved contract excerpts and was "
+            f"treated as data, not instructions: {', '.join(injection_markers)}"
+        )
+    return response
 
 
 def _offline_answer(hits: list[dict]) -> str:

@@ -14,7 +14,7 @@ from app.agents.schemas import (
     RenewalRisk,
     ScenarioResult,
 )
-from app.tools.llm_client import get_mode, plain_complete
+from app.tools.llm_client import get_mode, plain_complete, strip_think
 
 NARRATIVE_SYSTEM_PROMPT = (
     "You are writing the opening paragraph of an executive spend-intelligence report. Write 2-4 "
@@ -73,9 +73,12 @@ def _narrative(discovery: DiscoverySummary, total_potential_savings: float, high
                   f"Potential annual savings identified: ${total_potential_savings:,.0f} ({savings_pct:.1f}%)\n"
                   f"High renewal-risk contracts: {high_risk_contracts}\n"
                   f"Top opportunities:\n{top_lines}"),
+            agent="narrator",
         )
-        if result:
-            return result.strip()
+        # A reasoning model can return nothing but a <think> block; once stripped
+        # that is empty, and an empty summary is worse than the templated one.
+        if result and strip_think(result).strip():
+            return strip_think(result).strip()
 
     return (
         f"Portfolio intelligence identified ${total_potential_savings:,.0f} in annual savings opportunities "

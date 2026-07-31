@@ -13,12 +13,13 @@ from app import config
 from app.agents.schemas import (
     ClauseCitation,
     CriticFlag,
+    DiscoverySummary,
     ContractTerms,
     ExtractedContract,
     RevisionRequest,
     ScenarioResult,
 )
-from app.agents import critic, extraction, optimization
+from app.agents import critic, extraction, narrator, optimization
 from app.orchestrator import graph
 from app.tools import llm_client, vector_store
 
@@ -516,3 +517,37 @@ def test_revise_passes_critique_into_prompt(monkeypatch):
     optimization.revise([ScenarioResult(finding_id="F-1", asset_id="A-1")],
                         [RevisionRequest(finding_id="F-1", critique="rationale is circular")])
     assert "rationale is circular" in seen["user"]
+
+
+# ---------------------------------------------------------------------------
+# Narrator
+# ---------------------------------------------------------------------------
+
+_DISCOVERY = DiscoverySummary(total_annual_spend=14959346.0, total_monthly_spend=1246612.0,
+                              spend_by_category={}, asset_counts={})
+
+
+def test_narrator_strips_think_from_llm_output(monkeypatch):
+    monkeypatch.setattr(narrator, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(narrator, "plain_complete",
+                        lambda system, user, agent="unknown":
+                        "<think>let me reason about this</think>Spend is $14.9M.")
+    summary = narrator.run(_DISCOVERY, [], [], [], [])
+    assert "<think>" not in summary.executive_summary
+    assert summary.executive_summary == "Spend is $14.9M."
+
+
+def test_narrator_falls_back_when_llm_returns_nothing(monkeypatch):
+    monkeypatch.setattr(narrator, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(narrator, "plain_complete", lambda system, user, agent="unknown": None)
+    summary = narrator.run(_DISCOVERY, [], [], [], [])
+    assert "baseline annual spend" in summary.executive_summary
+
+
+def test_narrator_falls_back_when_llm_returns_only_reasoning(monkeypatch):
+    """A model that emits nothing but a think block must not yield an empty summary."""
+    monkeypatch.setattr(narrator, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(narrator, "plain_complete",
+                        lambda system, user, agent="unknown": "<think>still thinking</think>")
+    summary = narrator.run(_DISCOVERY, [], [], [], [])
+    assert "baseline annual spend" in summary.executive_summary
