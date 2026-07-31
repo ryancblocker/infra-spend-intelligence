@@ -48,11 +48,18 @@ LLM_TIMEOUT_SECONDS = float(os.environ.get("PACT_LLM_TIMEOUT", "120"))
 
 # --- Retrieval ---
 RETRIEVAL_K = int(os.environ.get("PACT_RETRIEVAL_K", "3"))
-# Distances from nomic-embed-text and from the hashed fallback are not on the
-# same scale, so the floor is chosen by whichever embedding path produced the
-# vector. See vector_store.default_floor().
-RELEVANCE_FLOOR_EMBED = float(os.environ.get("PACT_RELEVANCE_FLOOR_EMBED", "0.75"))
-RELEVANCE_FLOOR_HASHED = float(os.environ.get("PACT_RELEVANCE_FLOOR_HASHED", "0.95"))
+# Chroma is pinned to squared-L2 (see vector_store.VECTOR_SPACE). On the unit-
+# normalized vectors both embedding paths produce, that puts distances on a
+# [0, 2] scale where 2.0 means orthogonal - i.e. no shared signal at all.
+#
+# Measured against C-0007 with hashed embeddings: correct clauses land at
+# 1.23-1.48, irrelevant chunks at 2.0. 1.90 keeps every correct match while
+# dropping pure noise.
+RELEVANCE_FLOOR_HASHED = float(os.environ.get("PACT_RELEVANCE_FLOOR_HASHED", "1.90"))
+# nomic-embed-text separates relevant from irrelevant far more sharply, so this
+# can be tighter. NOT YET VERIFIED against a real model - confirm during the
+# Ollama end-to-end run before trusting it.
+RELEVANCE_FLOOR_EMBED = float(os.environ.get("PACT_RELEVANCE_FLOOR_EMBED", "1.50"))
 
 # --- Observability & caching ---
 LLM_LOG_PATH = RUNTIME_DIR / "llm_calls.jsonl"
