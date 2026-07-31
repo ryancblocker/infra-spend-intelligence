@@ -17,6 +17,43 @@ class DiscoverySummary(BaseModel):
     asset_counts: dict[str, int]
 
 
+class ClauseCitation(BaseModel):
+    """Where an extracted value actually came from. Assembled in code from the
+    retrieved chunk - never produced by the model."""
+    contract_id: str
+    chunk_index: int
+    heading: str = ""
+    excerpt: str = ""
+
+
+class ContractTerms(BaseModel):
+    """LLM-facing extraction schema. Deliberately narrow: clause facts only.
+
+    Kept separate from ExtractedContract because a small local model produces
+    clause facts reliably but citation bookkeeping badly - and all of that
+    bookkeeping is derivable in code anyway."""
+    vendor: str = ""
+    category: str = ""
+    auto_renew: bool = False
+    renewal_date: str = ""
+    notice_period_days: int | None = None
+    termination_fee_pct: float | None = None
+    annual_escalator_pct: float | None = None
+    minimum_commitment: str = ""
+    sla_summary: str = ""
+    liability_cap_summary: str = ""
+    has_mfn_clause: bool = False
+    has_price_protection_clause: bool = False
+    risk_level: str = "Low"  # Low | Medium | High
+    risk_rationale: str = ""
+
+
+class RevisionRequest(BaseModel):
+    """A critic-raised objection routed back to the optimization agent."""
+    finding_id: str
+    critique: str
+
+
 class ExtractedContract(BaseModel):
     contract_id: str
     vendor: str = ""
@@ -34,6 +71,13 @@ class ExtractedContract(BaseModel):
     risk_level: str = "Low"  # Low | Medium | High
     risk_rationale: str = ""
     extraction_source: str = "offline"  # ollama | anthropic | offline
+
+    # --- agent trace / provenance, assembled by the extraction loop ---
+    field_sources: dict[str, ClauseCitation] = Field(default_factory=dict)
+    extraction_iterations: int = 1
+    unresolved_fields: list[str] = Field(default_factory=list)
+    injection_flags: list[str] = Field(default_factory=list)
+    retrieval_queries: list[str] = Field(default_factory=list)
 
 
 class Finding(BaseModel):

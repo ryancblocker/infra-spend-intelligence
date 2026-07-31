@@ -10,6 +10,12 @@ from __future__ import annotations
 import pydantic
 
 from app import config
+from app.agents.schemas import (
+    ClauseCitation,
+    ContractTerms,
+    ExtractedContract,
+    RevisionRequest,
+)
 from app.tools import llm_client, vector_store
 
 
@@ -192,3 +198,31 @@ def test_default_floor_differs_by_embedding_backend(monkeypatch):
     assert vector_store.default_floor() == config.RELEVANCE_FLOOR_EMBED
     monkeypatch.setattr(llm_client, "get_mode", lambda: "offline")
     assert vector_store.default_floor() == config.RELEVANCE_FLOOR_HASHED
+
+
+# ---------------------------------------------------------------------------
+# Provenance schemas
+# ---------------------------------------------------------------------------
+
+
+def test_contract_terms_excludes_provenance_fields():
+    """The LLM-facing schema must not ask the model for bookkeeping it cannot
+    reliably produce - citations and counters are assembled in code."""
+    properties = ContractTerms.model_json_schema()["properties"]
+    for forbidden in ("field_sources", "extraction_iterations", "contract_id",
+                      "unresolved_fields", "injection_flags"):
+        assert forbidden not in properties
+
+
+def test_extracted_contract_defaults_are_empty_provenance():
+    record = ExtractedContract(contract_id="C-0001")
+    assert record.field_sources == {}
+    assert record.unresolved_fields == []
+    assert record.injection_flags == []
+    assert record.extraction_iterations == 1
+
+
+def test_clause_citation_carries_locator():
+    citation = ClauseCitation(contract_id="C-0007", chunk_index=3, heading="3. TERMINATION")
+    assert citation.contract_id == "C-0007"
+    assert citation.chunk_index == 3
