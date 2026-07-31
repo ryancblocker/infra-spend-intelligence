@@ -11,6 +11,7 @@ from app.agents.schemas import (
     Finding,
     PipelineRunSummary,
     RenewalRisk,
+    RevisionRequest,
     ScenarioResult,
 )
 
@@ -26,6 +27,12 @@ class PipelineState(TypedDict, total=False):
     scenarios: list[ScenarioResult]
     critic_flags: list[CriticFlag]
     summary: PipelineRunSummary
+
+    # --- reflection loop bookkeeping ---
+    # revision_count is the loop's hard cap; revision_requests is the critic's
+    # objection payload routed back to the optimization node.
+    revision_count: int
+    revision_requests: list[RevisionRequest]
 
 
 def empty_state() -> PipelineState:

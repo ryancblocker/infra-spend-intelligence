@@ -18,6 +18,7 @@ import queue as queue_module
 
 from langgraph.graph import END, START, StateGraph
 
+from app import config
 from app.agents import benchmark, critic, discovery, extraction, narrator, optimization, renewal, waste
 from app.orchestrator.events import emit, emit_done
 from app.orchestrator.state import PipelineState
@@ -49,14 +50,38 @@ def renewal_node(state: PipelineState) -> dict:
 
 
 def optimization_node(state: PipelineState) -> dict:
+    """Runs in two modes. On the first pass it scores every finding. When the
+    critic has routed objections back, it regenerates only the flagged
+    judgements and leaves all cost math untouched."""
+    requests = state.get("revision_requests") or []
+    if requests:
+        revised = optimization.revise(state.get("scenarios", []), requests)
+        return {
+            "scenarios": revised,
+            "revision_count": state.get("revision_count", 0) + 1,
+            "revision_requests": [],
+        }
+
     all_findings = list(state.get("waste_findings", [])) + list(state.get("benchmark_findings", []))
-    result = optimization.run(all_findings)
-    return {"scenarios": result}
+    return {"scenarios": optimization.run(all_findings), "revision_count": 0,
+            "revision_requests": []}
 
 
 def critic_node(state: PipelineState) -> dict:
     reviewed, flags = critic.run(state.get("scenarios", []))
-    return {"scenarios": reviewed, "critic_flags": flags}
+    return {
+        "scenarios": reviewed,
+        "critic_flags": flags,
+        "revision_requests": critic.build_revision_requests(flags),
+    }
+
+
+def route_after_critic(state: PipelineState) -> str:
+    """The reflection loop's gate. Deterministic and hard-capped: the model never
+    decides whether to keep going."""
+    if state.get("revision_requests") and state.get("revision_count", 0) < config.MAX_REVISIONS:
+        return "revise"
+    return "done"
 
 
 def narrator_node(state: PipelineState) -> dict:
@@ -84,7 +109,8 @@ def build_graph():
         graph.add_edge("discovery", worker)
         graph.add_edge(worker, "optimization")
     graph.add_edge("optimization", "critic")
-    graph.add_edge("critic", "narrator")
+    graph.add_conditional_edges("critic", route_after_critic,
+                                {"revise": "optimization", "done": "narrator"})
     graph.add_edge("narrator", END)
 
     return graph.compile()

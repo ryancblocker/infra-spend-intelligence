@@ -11,8 +11,12 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.agents.schemas import CriticFlag, ScenarioResult
+from app.agents.schemas import CriticFlag, RevisionRequest, ScenarioResult
 from app.tools.llm_client import chat_structured, get_mode
+
+# Only these severities are worth spending a regeneration pass on; 'info' flags
+# are surfaced to the user but do not trigger the loop.
+ACTIONABLE_SEVERITIES = ("warning", "error")
 
 REVIEW_SYSTEM_PROMPT = (
     "You are a skeptical reviewer checking spend-optimization recommendations before they reach "
@@ -39,6 +43,18 @@ def run(scenarios: list[ScenarioResult]) -> tuple[list[ScenarioResult], list[Cri
         flags.extend(_llm_review(reviewed[:10]))
 
     return reviewed, flags
+
+
+def build_revision_requests(flags: list[CriticFlag]) -> list[RevisionRequest]:
+    """Turn actionable flags into regeneration requests, one per scenario, with
+    every objection against that scenario joined into a single critique."""
+    grouped: dict[str, list[str]] = {}
+    for flag in flags:
+        if flag.target_type != "scenario" or flag.severity not in ACTIONABLE_SEVERITIES:
+            continue
+        grouped.setdefault(flag.target_id, []).append(flag.message)
+    return [RevisionRequest(finding_id=target_id, critique=" ".join(messages))
+            for target_id, messages in grouped.items()]
 
 
 def _numeric_sanity_check(scenario: ScenarioResult) -> tuple[ScenarioResult, list[CriticFlag]]:

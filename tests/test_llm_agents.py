@@ -12,11 +12,14 @@ import pydantic
 from app import config
 from app.agents.schemas import (
     ClauseCitation,
+    CriticFlag,
     ContractTerms,
     ExtractedContract,
     RevisionRequest,
+    ScenarioResult,
 )
-from app.agents import extraction
+from app.agents import critic, extraction, optimization
+from app.orchestrator import graph
 from app.tools import llm_client, vector_store
 
 
@@ -423,3 +426,93 @@ def test_corrupt_cache_file_is_not_fatal(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "EXTRACTION_CACHE_PATH", bad)
     monkeypatch.setattr(config, "EXTRACTION_CACHE_ENABLED", True)
     assert extraction.load_cache() == {}
+
+
+# ---------------------------------------------------------------------------
+# Critic -> Optimization reflection loop
+# ---------------------------------------------------------------------------
+
+
+def test_build_revision_requests_from_warning_flags():
+    flags = [
+        CriticFlag(target_id="F-1", target_type="scenario", severity="warning", message="vague"),
+        CriticFlag(target_id="F-2", target_type="scenario", severity="info", message="minor"),
+    ]
+    requests = critic.build_revision_requests(flags)
+    assert [r.finding_id for r in requests] == ["F-1"]
+    assert "vague" in requests[0].critique
+
+
+def test_build_revision_requests_includes_errors():
+    flags = [CriticFlag(target_id="F-9", target_type="scenario", severity="error", message="bad math")]
+    assert [r.finding_id for r in critic.build_revision_requests(flags)] == ["F-9"]
+
+
+def test_route_after_critic_revises_when_flagged_under_cap():
+    state = {"revision_requests": [RevisionRequest(finding_id="F-1", critique="c")],
+             "revision_count": 0}
+    assert graph.route_after_critic(state) == "revise"
+
+
+def test_route_after_critic_stops_at_revision_cap():
+    state = {"revision_requests": [RevisionRequest(finding_id="F-1", critique="c")],
+             "revision_count": config.MAX_REVISIONS}
+    assert graph.route_after_critic(state) == "done"
+
+
+def test_route_after_critic_stops_with_no_requests():
+    assert graph.route_after_critic({"revision_requests": [], "revision_count": 0}) == "done"
+
+
+def test_revise_preserves_all_cost_numbers(monkeypatch):
+    original = ScenarioResult(
+        finding_id="F-1", asset_id="A-1", recommended_action="Cancel",
+        business_rationale="vague", confidence=0.9, keep_cost_36mo=360000.0,
+        cancel_cost_36mo=12000.0, renegotiate_cost_36mo=259200.0,
+        projected_savings_36mo=348000.0, break_even_months=1.2,
+        estimated_annual_savings=100000.0,
+    )
+    monkeypatch.setattr(optimization, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(
+        optimization, "chat_structured",
+        lambda system, user, schema, agent="unknown": optimization.OptimizationJudgment(
+            recommended_action="Renegotiate", confidence=0.6, risk_level="Medium",
+            business_rationale="specific and grounded",
+            negotiation_talking_points=["cite utilization data"]),
+    )
+
+    revised = optimization.revise([original],
+                                  [RevisionRequest(finding_id="F-1", critique="too vague")])
+    result = revised[0]
+    assert result.business_rationale == "specific and grounded"
+    assert result.recommended_action == "Renegotiate"
+    assert result.keep_cost_36mo == original.keep_cost_36mo
+    assert result.cancel_cost_36mo == original.cancel_cost_36mo
+    assert result.renegotiate_cost_36mo == original.renegotiate_cost_36mo
+    assert result.projected_savings_36mo == original.projected_savings_36mo
+    assert result.break_even_months == original.break_even_months
+    assert result.estimated_annual_savings == original.estimated_annual_savings
+
+
+def test_revise_leaves_unflagged_scenarios_untouched(monkeypatch):
+    monkeypatch.setattr(optimization, "get_mode", lambda: "offline")
+    a = ScenarioResult(finding_id="F-1", asset_id="A-1", business_rationale="flagged")
+    b = ScenarioResult(finding_id="F-2", asset_id="A-2", business_rationale="untouched")
+    revised = optimization.revise([a, b], [RevisionRequest(finding_id="F-1", critique="c")])
+    assert revised[1].business_rationale == "untouched"
+
+
+def test_revise_passes_critique_into_prompt(monkeypatch):
+    seen = {}
+
+    def reply(system, user, schema, agent="unknown"):
+        seen["user"] = user
+        return optimization.OptimizationJudgment(
+            recommended_action="Cancel", confidence=0.5, risk_level="Low",
+            business_rationale="revised", negotiation_talking_points=[])
+
+    monkeypatch.setattr(optimization, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(optimization, "chat_structured", reply)
+    optimization.revise([ScenarioResult(finding_id="F-1", asset_id="A-1")],
+                        [RevisionRequest(finding_id="F-1", critique="rationale is circular")])
+    assert "rationale is circular" in seen["user"]

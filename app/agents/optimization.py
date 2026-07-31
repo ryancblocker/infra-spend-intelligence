@@ -13,7 +13,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from app import config
-from app.agents.schemas import Finding, ScenarioResult
+from app.agents.schemas import Finding, RevisionRequest, ScenarioResult
 from app.tools import dataset_tools
 from app.tools.llm_client import chat_structured, get_mode
 
@@ -56,7 +56,8 @@ def run(findings: list[Finding]) -> list[ScenarioResult]:
         judgment = None
         is_high_value = finding.estimated_annual_savings >= config.HIGH_VALUE_THRESHOLD or action["risk_level"] == "High"
         if is_high_value and llm_budget > 0 and get_mode() != "offline":
-            judgment = _llm_judgment(finding, keep_cost, cancel_cost, renegotiate_cost, projected_savings)
+            judgment = _llm_judgment(finding, keep_cost, cancel_cost, renegotiate_cost,
+                                     projected_savings)
             llm_budget -= 1
 
         recommended_action = judgment.recommended_action if judgment else action["recommended_action"]
@@ -87,6 +88,71 @@ def run(findings: list[Finding]) -> list[ScenarioResult]:
         ))
 
     return results
+
+
+REVISION_SYSTEM_PROMPT = (
+    JUDGMENT_SYSTEM_PROMPT
+    + " A reviewer has rejected your previous recommendation. Address their objection "
+    "directly and produce a more specific, better-grounded judgement. The cost figures "
+    "you are given are fixed and authoritative - do not dispute or restate them."
+)
+
+# Only these fields may change in a revision. Every cost projection is computed
+# deterministically upstream, so a regeneration pass must never touch them -
+# that separation is what keeps this agent grounded rather than a plausible-
+# sounding hallucination machine.
+REVISABLE_FIELDS = (
+    "recommended_action", "risk_level", "confidence",
+    "business_rationale", "negotiation_talking_points",
+)
+
+
+def revise(scenarios: list[ScenarioResult], requests: list[RevisionRequest]) -> list[ScenarioResult]:
+    """Regenerate the judgement on critic-flagged scenarios only. Cost numbers
+    pass through untouched; unflagged scenarios are returned by identity."""
+    if not requests or get_mode() == "offline":
+        return scenarios
+
+    critiques = {request.finding_id: request.critique for request in requests}
+    revised: list[ScenarioResult] = []
+    for scenario in scenarios:
+        critique = critiques.get(scenario.finding_id)
+        if critique is None:
+            revised.append(scenario)
+            continue
+
+        judgment = _revised_judgment(scenario, critique)
+        if judgment is None:
+            revised.append(scenario)
+            continue
+
+        revised.append(scenario.model_copy(update={
+            "recommended_action": judgment.recommended_action,
+            "risk_level": judgment.risk_level,
+            "confidence": round(max(0.0, min(judgment.confidence, 1.0)), 2),
+            "business_rationale": judgment.business_rationale,
+            "negotiation_talking_points": judgment.negotiation_talking_points,
+            "source": f"{get_mode()}-revised",
+        }))
+    return revised
+
+
+def _revised_judgment(scenario: ScenarioResult, critique: str) -> OptimizationJudgment | None:
+    user = (
+        f"Finding: {scenario.issue}\n"
+        f"Category: {scenario.category}\n"
+        f"Asset: {scenario.asset_id} (contract {scenario.contract_id})\n"
+        f"Estimated annual savings if addressed: ${scenario.estimated_annual_savings:,.2f}\n"
+        f"36-month projection - keep: ${scenario.keep_cost_36mo:,.0f}, "
+        f"cancel: ${scenario.cancel_cost_36mo:,.0f}, "
+        f"renegotiate: ${scenario.renegotiate_cost_36mo:,.0f}, "
+        f"projected savings: ${scenario.projected_savings_36mo:,.0f}\n\n"
+        f"Your previous recommendation was '{scenario.recommended_action}' with this "
+        f"rationale: \"{scenario.business_rationale}\"\n"
+        f"Reviewer objection: {critique}"
+    )
+    return chat_structured(system=REVISION_SYSTEM_PROMPT, user=user,
+                           schema=OptimizationJudgment, agent="optimization-revise")
 
 
 def _deterministic_action(finding: Finding) -> dict:
