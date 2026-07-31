@@ -1,0 +1,77 @@
+{
+  "_comment": "Hand-labeled from the contract text in app/data/contract_docs/, NOT from extractor output. Fields scored as 'contains' hold a distinctive substring the extracted value must include; all others are exact matches.",
+  "_match_modes": {
+    "renewal_date": "exact",
+    "auto_renew": "exact",
+    "notice_period_days": "exact",
+    "termination_fee_pct": "exact",
+    "annual_escalator_pct": "exact",
+    "minimum_commitment": "contains",
+    "sla_summary": "contains",
+    "liability_cap_summary": "contains",
+    "has_mfn_clause": "exact",
+    "has_price_protection_clause": "exact"
+  },
+  "contracts": {
+    "C-0007": {
+      "renewal_date": "2026-08-26",
+      "auto_renew": true,
+      "notice_period_days": 90,
+      "termination_fee_pct": 25.0,
+      "annual_escalator_pct": 2.0,
+      "minimum_commitment": "7",
+      "sla_summary": "99.95",
+      "liability_cap_summary": "twelve (12) months",
+      "has_mfn_clause": false,
+      "has_price_protection_clause": true
+    },
+    "C-0010": {
+      "renewal_date": "2027-12-03",
+      "auto_renew": true,
+      "notice_period_days": 30,
+      "termination_fee_pct": 10.0,
+      "annual_escalator_pct": 5.0,
+      "minimum_commitment": "6",
+      "sla_summary": "99.95",
+      "liability_cap_summary": "twelve (12) months",
+      "has_mfn_clause": true,
+      "has_price_protection_clause": true
+    },
+    "C-0021": {
+      "renewal_date": "2027-07-20",
+      "auto_renew": false,
+      "notice_period_days": 60,
+      "termination_fee_pct": 8.0,
+      "annual_escalator_pct": 5.0,
+      "minimum_commitment": "955",
+      "sla_summary": "99.95",
+      "liability_cap_summary": "twelve (12) months",
+      "has_mfn_clause": false,
+      "has_price_protection_clause": true
+    },
+    "C-0035": {
+      "renewal_date": "2027-05-11",
+      "auto_renew": false,
+      "notice_period_days": 90,
+      "termination_fee_pct": 10.0,
+      "annual_escalator_pct": 5.0,
+      "minimum_commitment": "904",
+      "sla_summary": "99.9",
+      "liability_cap_summary": "twelve (12) months",
+      "has_mfn_clause": false,
+      "has_price_protection_clause": false
+    },
+    "C-0046": {
+      "renewal_date": "2029-07-02",
+      "auto_renew": false,
+      "notice_period_days": 45,
+      "termination_fee_pct": 18.0,
+      "annual_escalator_pct": 4.0,
+      "minimum_commitment": "Tiered SLA",
+      "sla_summary": "99.95",
+      "liability_cap_summary": "twelve (12) months",
+      "has_mfn_clause": true,
+      "has_price_protection_clause": false
+    }
+  }
+}
