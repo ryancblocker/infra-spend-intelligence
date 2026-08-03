@@ -21,6 +21,17 @@ VECTOR_STORE_DIR = RUNTIME_DIR / "vector_store"
 STATIC_DIR = APP_DIR / "static"
 TEMPLATES_DIR = APP_DIR / "templates"
 
+# --- Uploads ---
+# Uploaded contracts live in runtime/, never in the git-tracked seed corpus.
+UPLOAD_DIR = RUNTIME_DIR / "uploads"
+UPLOAD_MANIFEST_PATH = UPLOAD_DIR / "manifest.json"
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+ALLOWED_UPLOAD_SUFFIXES = (".pdf", ".txt")
+# A digital PDF of a contract yields thousands of characters. Under this, the
+# file is image-only and needs OCR, which is out of scope - so say so plainly
+# rather than creating a contract with no terms and no explanation.
+SCANNED_PDF_MIN_CHARS = 200
+
 # --- LLM backend ---
 # "auto" probes Ollama first, then Anthropic, then falls back to the offline
 # deterministic mode so the app always runs, even with nothing installed.
@@ -79,3 +90,4 @@ FRESH_START = os.environ.get("PACT_FRESH_START", "0") == "1"
 def ensure_runtime_dirs() -> None:
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
     VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
