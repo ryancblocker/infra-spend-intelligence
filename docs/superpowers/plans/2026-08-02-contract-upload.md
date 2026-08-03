@@ -883,12 +883,15 @@ def test_delete_removes_the_row():
 def test_reseed_rehydrates_uploads_from_the_manifest(clean_uploads):
     (clean_uploads / "U-0201.txt").write_text("VENDOR: Rehydrated Corp\n", encoding="utf-8")
     uploads.write_manifest({
-        "U-0201": {
-            "contract_id": "U-0201",
-            "original_filename": "deal.txt",
-            "stored_filename": "U-0201.txt",
-            "terms": _sample_record("U-0201").model_dump(mode="json"),
-        }
+        "next_id": 202,
+        "entries": {
+            "U-0201": {
+                "contract_id": "U-0201",
+                "original_filename": "deal.txt",
+                "stored_filename": "U-0201.txt",
+                "terms": _sample_record("U-0201").model_dump(mode="json"),
+            },
+        },
     })
 
     seed_db.build_database()
@@ -1000,7 +1003,7 @@ def _rehydrate_uploads() -> int:
 
     dataset_tools.ensure_source_column()
     restored = 0
-    for entry in uploads.read_manifest().values():
+    for entry in uploads.read_manifest()["entries"].values():
         terms = entry.get("terms")
         if not terms:
             continue
@@ -1096,7 +1099,7 @@ def test_remove_deletes_row_and_file(client):
 
     from app.tools import dataset_tools
     assert dataset_tools.fetch_contract(contract_id) is None
-    assert contract_id not in uploads.read_manifest()
+    assert contract_id not in uploads.read_manifest()["entries"]
 
 
 def test_remove_unknown_id_returns_404(client):
@@ -1142,13 +1145,13 @@ async def api_upload(file: UploadFile = File(...)):
     final_path = path.with_name(f"{contract_id}.txt")
     path.rename(final_path)
     manifest = uploads.read_manifest()
-    manifest[contract_id]["stored_filename"] = final_path.name
+    manifest["entries"][contract_id]["stored_filename"] = final_path.name
 
     record = extraction.extract_one(contract_id, text)
     monthly, annual = extraction.reconcile_costs(record.monthly_cost, record.annual_cost)
     record.monthly_cost, record.annual_cost = monthly, annual
 
-    manifest[contract_id]["terms"] = record.model_dump(mode="json")
+    manifest["entries"][contract_id]["terms"] = record.model_dump(mode="json")
     uploads.write_manifest(manifest)
     dataset_tools.upsert_upload_row(record)
 
@@ -1317,7 +1320,7 @@ In `app/views.py`, in the mission-control context builder, add:
 ```python
     from app.tools import uploads as upload_store
     context["uploads"] = sorted(
-        upload_store.read_manifest().values(), key=lambda e: e["contract_id"]
+        upload_store.read_manifest()["entries"].values(), key=lambda e: e["contract_id"]
     )
 ```
 
