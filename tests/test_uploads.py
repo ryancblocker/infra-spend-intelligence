@@ -912,3 +912,96 @@ def test_a_corrupt_manifest_never_deletes_upload_rows(clean_uploads):
 
     assert dataset_tools.fetch_contract("U-0303") is not None
     dataset_tools.delete_upload_row("U-0303")
+
+
+# ---------------------------------------------------------------------------
+# An uploaded contract must actually reach the retriever
+# ---------------------------------------------------------------------------
+
+from app.tools import vector_store  # noqa: E402
+
+# "any hit at all for this contract", rather than the backend-specific relevance
+# floor: these tests ask whether the document is in the index, not how well a
+# particular query happens to score against a hashed embedding.
+ANY_DISTANCE = float("inf")
+
+# Deliberately NOT the seed generator's phrasing. The offline regex is tuned to
+# that generator, so a document worded like a real contract is the only fixture
+# that can tell "the LLM read it" apart from "the regex happened to match".
+REALISTIC_CONTRACT = """MASTER SUBSCRIPTION AGREEMENT
+
+1. TERM AND RENEWAL. The initial subscription term commences on the Effective
+Date and expires on 30 June 2027. Thereafter this Agreement shall renew for
+successive periods of one (1) year unless a party delivers written notice of
+its intention not to renew no fewer than ninety (90) days prior to the end of
+the then-current period.
+
+2. FEES. Customer shall remit subscription charges of USD 14,250 each calendar
+month, invoiced quarterly in advance and payable within thirty days of receipt.
+
+3. TERMINATION FOR CONVENIENCE. Either party may exit this Agreement early on
+payment of an exit charge amounting to twenty percent of the charges that would
+otherwise have fallen due across the unexpired balance of the period.
+"""
+
+
+def _upload(client, name: str = "realistic.txt", body: str = REALISTIC_CONTRACT) -> str:
+    response = client.post(
+        "/api/upload", files={"file": (name, body.encode("utf-8"), "text/plain")}
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["contract_id"]
+
+
+def test_uploaded_contract_chunks_are_retrievable(client):
+    """The regression: nothing rebuilt or extended the vector index after an
+    upload, so _extract_agentic retrieved zero chunks, broke out of its loop,
+    and silently degraded to the offline regex - which is tuned to the seed
+    generator's exact wording and reads almost nothing off a real contract.
+
+    Asserted at the vector-store level because the suite is pinned to offline
+    mode, where extraction never queries the index at all."""
+    contract_id = _upload(client)
+
+    hits = vector_store.search(
+        "term expiration renewal notice", n_results=5,
+        contract_id=contract_id, max_distance=ANY_DISTANCE,
+    )
+    assert hits, "an uploaded contract must be searchable immediately after upload"
+    assert {h["contract_id"] for h in hits} == {contract_id}
+
+
+def test_removing_an_upload_drops_its_chunks(client):
+    """Otherwise the index accumulates chunks for documents that no longer
+    exist, and /api/ask cites contracts the user has deleted."""
+    contract_id = _upload(client)
+    assert vector_store.search("renewal", 5, contract_id=contract_id, max_distance=ANY_DISTANCE)
+
+    assert client.post(f"/api/uploads/{contract_id}/remove").status_code == 200
+
+    assert vector_store.search("renewal", 5, contract_id=contract_id, max_distance=ANY_DISTANCE) == []
+
+
+def test_index_document_chunks_exactly_as_build_index_does(client):
+    """index_document and build_index must share one chunking/embedding path,
+    or the incremental route and the full rebuild drift into indexing the same
+    document two different ways."""
+    expected = len(vector_store.chunk_document(REALISTIC_CONTRACT))
+    assert vector_store.index_document("U-9001", REALISTIC_CONTRACT) == expected
+
+    hits = vector_store.search("fees charges", n_results=expected,
+                               contract_id="U-9001", max_distance=ANY_DISTANCE)
+    assert len(hits) == expected
+    vector_store.remove_document("U-9001")
+
+
+def test_reindexing_the_same_id_replaces_its_chunks(client):
+    """A re-index must not leave the previous version's chunks behind next to
+    the new ones - stale clause text would still be retrievable and citable."""
+    vector_store.index_document("U-9002", REALISTIC_CONTRACT)
+    vector_store.index_document("U-9002", "1. TERM. This one expires 2028-01-01.")
+
+    hits = vector_store.search("term", 20, contract_id="U-9002", max_distance=ANY_DISTANCE)
+    assert len(hits) == 1
+    assert "2028-01-01" in hits[0]["text"]
+    vector_store.remove_document("U-9002")

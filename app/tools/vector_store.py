@@ -63,6 +63,34 @@ def _client():
     return chromadb.PersistentClient(path=str(config.VECTOR_STORE_DIR))
 
 
+def _collection():
+    """The contract-docs collection, created on first use.
+
+    get_or_create rather than create: index_document() runs on an upload, which
+    can happen before any full build_index() has ever run."""
+    return _client().get_or_create_collection(
+        COLLECTION_NAME, metadata={"hnsw:space": VECTOR_SPACE}
+    )
+
+
+def _chunk_records(contract_id: str, text: str) -> tuple[list[str], list[str], list[dict]]:
+    """One document's chunks as (ids, documents, metadatas).
+
+    The single place that decides how a document becomes rows in the index, so
+    the full rebuild and the per-upload incremental add cannot drift into
+    chunking or identifying the same document two different ways."""
+    ids, documents, metadatas = [], [], []
+    for chunk in chunk_document(text):
+        ids.append(f"{contract_id}::{chunk['index']}")
+        documents.append(chunk["text"])
+        metadatas.append({
+            "contract_id": contract_id,
+            "chunk_index": chunk["index"],
+            "heading": chunk["heading"],
+        })
+    return ids, documents, metadatas
+
+
 def build_index() -> int:
     """(Re)build the contract-document vector index from the seed corpus and uploads."""
     client = _client()
@@ -77,19 +105,47 @@ def build_index() -> int:
 
     ids, documents, metadatas = [], [], []
     for path in doc_paths:
-        contract_id = path.stem
-        for chunk in chunk_document(path.read_text(encoding="utf-8")):
-            ids.append(f"{contract_id}::{chunk['index']}")
-            documents.append(chunk["text"])
-            metadatas.append({
-                "contract_id": contract_id,
-                "chunk_index": chunk["index"],
-                "heading": chunk["heading"],
-            })
+        doc_ids, docs, metas = _chunk_records(path.stem, path.read_text(encoding="utf-8"))
+        ids.extend(doc_ids)
+        documents.extend(docs)
+        metadatas.extend(metas)
 
     embeddings = embed_texts(documents)
     collection.add(ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings)
     return len(doc_paths)
+
+
+def index_document(contract_id: str, text: str) -> int:
+    """Add one document's chunks to the existing index. Returns chunks written.
+
+    This is what an upload calls. build_index() deletes and re-embeds the whole
+    collection, which is wasteful for a single new file and gets slower with
+    every contract already indexed - but an upload that is never indexed is
+    invisible to retrieval, so the extraction agent finds no clauses for it and
+    silently falls back to the offline regex.
+
+    Any chunks already stored under this id are dropped first, so re-indexing a
+    document replaces it rather than leaving the previous version's clauses in
+    the index alongside the new ones."""
+    remove_document(contract_id)
+    ids, documents, metadatas = _chunk_records(contract_id, text)
+    if not documents:
+        return 0
+    _collection().add(ids=ids, documents=documents, metadatas=metadatas,
+                      embeddings=embed_texts(documents))
+    return len(documents)
+
+
+def remove_document(contract_id: str) -> None:
+    """Drop every chunk belonging to one contract.
+
+    Called when an upload is removed: without it the index accumulates chunks
+    for documents that no longer exist, and /ask happily cites a contract the
+    user deleted."""
+    client = _client()
+    if COLLECTION_NAME not in {c.name for c in client.list_collections()}:
+        return
+    client.get_collection(COLLECTION_NAME).delete(where={"contract_id": contract_id})
 
 
 def search(query: str, n_results: int = 5, contract_id: str | None = None,

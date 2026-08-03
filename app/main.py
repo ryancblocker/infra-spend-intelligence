@@ -200,7 +200,7 @@ def api_reset():
 
 def _discard_failed_upload(contract_id: str, *possible_paths: Path) -> None:
     """Best-effort cleanup after a failed upload: the file (whichever name it
-    currently has), the manifest entry, and any DB row.
+    currently has), the manifest entry, any index chunks, and any DB row.
 
     Each step is individually guarded. A failure in cleanup itself must never
     propagate - if it did, it would replace the exception the caller is about
@@ -214,6 +214,10 @@ def _discard_failed_upload(contract_id: str, *possible_paths: Path) -> None:
 
     try:
         uploads.remove(contract_id)
+    except Exception:
+        pass
+    try:
+        vector_store.remove_document(contract_id)
     except Exception:
         pass
     for candidate in possible_paths:
@@ -273,6 +277,15 @@ async def api_upload(file: UploadFile = File(...)):
         manifest["entries"][contract_id]["stored_filename"] = final_path.name
         uploads.write_manifest(manifest)
 
+        # Index BEFORE extracting, not after: the extraction agent works by
+        # retrieving clause chunks for this contract_id, so an unindexed
+        # document yields zero hits, ends the agentic loop on its first
+        # iteration, and silently degrades to the offline regex - which is
+        # tuned to the seed generator's phrasing and reads almost nothing off a
+        # real contract. Incremental, because build_index() re-embeds every
+        # document in the corpus to add one.
+        vector_store.index_document(contract_id, text)
+
         # extract_one already applies reconcile_costs internally (Task 3), so
         # no second application is done here - that would just be a
         # confusing no-op. NOTE: a poor extraction (the LLM path producing
@@ -312,6 +325,9 @@ def api_upload_remove(contract_id: str):
     if not uploads.remove(contract_id):
         raise HTTPException(status_code=404, detail=f"No uploaded contract {contract_id}.")
     dataset_tools.delete_upload_row(contract_id)
+    # Drop the contract's clause chunks too, or the index keeps citing a
+    # document that no longer exists anywhere else in the system.
+    vector_store.remove_document(contract_id)
     return {"removed": True}
 
 
