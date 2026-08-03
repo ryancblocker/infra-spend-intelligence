@@ -94,6 +94,16 @@ def on_startup() -> None:
         except Exception as exc:
             print(f"[PACT] Vector index build skipped: {exc}")
 
+    # The contracts table is derived from the upload manifest, so reconcile the
+    # two on every boot, not only when the database is rebuilt. Without this an
+    # uploaded row can outlive its manifest entry and become unreachable - shown
+    # on /contracts and counted in totals, but with no Remove button and a 404
+    # from the remove route.
+    try:
+        seed_db.rehydrate_uploads()
+    except Exception as exc:
+        print(f"[PACT] Upload reconciliation skipped: {exc}")
+
     if config.FRESH_START:
         print("[PACT] PACT_FRESH_START=1 - starting with no prior run loaded.")
     else:

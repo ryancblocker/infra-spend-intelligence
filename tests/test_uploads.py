@@ -850,3 +850,65 @@ def test_renewal_risk_includes_an_uploaded_contract(client):
         "end date, notice days and auto-renew are all stated in the document, so "
         "renewal risk must cover uploads"
     )
+
+
+# ---------------------------------------------------------------------------
+# The manifest is the source of truth; the contracts table is derived state
+# ---------------------------------------------------------------------------
+
+
+def test_the_suite_never_writes_to_the_real_database():
+    """Route tests upsert contracts rows. Before this guard, clean_uploads
+    redirected UPLOAD_DIR but not DB_PATH, so every one of those rows landed in
+    the developer's runtime/pact.db - where it had no manifest entry, no file,
+    no Remove button, and still counted in totals and renewal risk."""
+    assert config.DB_PATH != config.RUNTIME_DIR / "pact.db", (
+        "tests must run against a temporary database, not runtime/pact.db"
+    )
+    assert not str(config.DB_PATH).startswith(str(config.RUNTIME_DIR))
+
+
+def test_rehydrate_deletes_upload_rows_with_no_manifest_entry(clean_uploads):
+    """An upload row whose manifest entry is gone is unreachable: the dashboard
+    card is manifest-driven so it has no Remove button, and the remove route
+    404s. The manifest is the source of truth, so rehydration must reconcile
+    the table down to it rather than only inserting."""
+    dataset_tools.upsert_upload_row(_sample_record("U-0301"))
+    assert dataset_tools.fetch_contract("U-0301") is not None
+
+    seed_db.rehydrate_uploads()
+
+    assert dataset_tools.fetch_contract("U-0301") is None
+
+
+def test_rehydrate_keeps_upload_rows_that_are_in_the_manifest(clean_uploads):
+    (clean_uploads / "U-0302.txt").write_text("VENDOR: Kept Corp\n", encoding="utf-8")
+    uploads.write_manifest({
+        "next_id": 303,
+        "entries": {
+            "U-0302": {
+                "contract_id": "U-0302",
+                "original_filename": "kept.txt",
+                "stored_filename": "U-0302.txt",
+                "terms": _sample_record("U-0302").model_dump(mode="json"),
+            },
+        },
+    })
+
+    seed_db.rehydrate_uploads()
+
+    assert dataset_tools.fetch_contract("U-0302") is not None
+
+
+def test_a_corrupt_manifest_never_deletes_upload_rows(clean_uploads):
+    """Reconciliation trusts the manifest. If the manifest cannot be read, the
+    honest response is to leave the table alone - deleting every upload row
+    because a file failed to parse would turn one recoverable problem into
+    permanent data loss."""
+    dataset_tools.upsert_upload_row(_sample_record("U-0303"))
+    clean_uploads.joinpath("manifest.json").write_text("{not valid json", encoding="utf-8")
+
+    seed_db.rehydrate_uploads()
+
+    assert dataset_tools.fetch_contract("U-0303") is not None
+    dataset_tools.delete_upload_row("U-0303")
