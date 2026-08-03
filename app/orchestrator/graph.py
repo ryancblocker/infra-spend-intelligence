@@ -145,7 +145,7 @@ def get_graph():
     return _COMPILED_GRAPH
 
 
-def _detail_for(node: str, output: dict) -> str:
+def detail_for(node: str, output: dict) -> str:
     if node == "discovery":
         d = output["discovery"]
         return f"${d.total_annual_spend:,.0f} total annual spend across {d.asset_counts.get('contracts', 0)} contracts"
@@ -182,7 +182,7 @@ def run_pipeline(event_queue: "queue_module.Queue | None" = None) -> PipelineSta
         for chunk in graph.stream({}, stream_mode="updates"):
             for node_name, node_output in chunk.items():
                 final_state.update(node_output)
-                emit(event_queue, node_name, "completed", _detail_for(node_name, node_output))
+                emit(event_queue, node_name, "completed", detail_for(node_name, node_output))
     finally:
         _ACTIVE_QUEUE = None
         emit_done(event_queue)

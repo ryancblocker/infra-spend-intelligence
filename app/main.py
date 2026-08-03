@@ -24,7 +24,7 @@ from app import config, views  # noqa: E402
 from app.data import seed_db  # noqa: E402
 from app.orchestrator import persistence  # noqa: E402
 from app.orchestrator.events import DONE_SENTINEL, new_queue  # noqa: E402
-from app.orchestrator.graph import run_pipeline  # noqa: E402
+from app.orchestrator.graph import detail_for, run_pipeline  # noqa: E402
 from app.orchestrator.state import PipelineState  # noqa: E402
 from app.tools import dataset_tools, vector_store  # noqa: E402
 from app.tools.llm_client import (  # noqa: E402
@@ -44,6 +44,16 @@ templates.env.filters["money2"] = lambda v: f"${v:,.2f}" if v is not None else "
 
 _LAST_RUN: PipelineState = {}
 _RUN_IN_PROGRESS = False
+# Per-node result lines from the last run, so a page load after the run can
+# render the pipeline already complete instead of resetting every node to grey.
+_LAST_NODE_DETAILS: dict[str, str] = {}
+
+# Cache-buster for static assets. Without it a browser keeps serving the JS it
+# already has, so a fix to the pipeline runner silently does not apply.
+ASSET_VERSION = str(int(max(
+    (p.stat().st_mtime for p in config.STATIC_DIR.rglob("*") if p.is_file()),
+    default=0,
+)))
 
 
 @app.on_event("startup")
@@ -67,12 +77,30 @@ def on_startup() -> None:
             _LAST_RUN = loaded
 
 
+PIPELINE_NODES = ("discovery", "extraction", "waste", "benchmark", "renewal",
+                  "optimization", "critic", "narrator")
+
+
+def _record_node_details(state: PipelineState) -> None:
+    """Capture each node's result line so the finished pipeline can be re-rendered
+    on a later page load."""
+    global _LAST_NODE_DETAILS
+    details: dict[str, str] = {}
+    for node in PIPELINE_NODES:
+        try:
+            details[node] = detail_for(node, state)
+        except Exception:
+            details[node] = ""
+    _LAST_NODE_DETAILS = details
+
+
 def _base_context(request: Request) -> dict:
     return {
         "request": request,
         "llm_mode": get_mode(),
         "has_run": bool(_LAST_RUN),
         "summary": _LAST_RUN.get("summary"),
+        "asset_version": ASSET_VERSION,
     }
 
 
@@ -127,17 +155,14 @@ def api_reset():
 
 @app.get("/", response_class=HTMLResponse)
 def mission_control(request: Request):
-    # Nothing to show until the pipeline has run - send first-time visitors to
-    # the explainer rather than a grid of empty cards. `?start=1` is how the
-    # welcome page hands off, so it must bypass the redirect or the two pages
-    # bounce off each other.
-    autostart = request.query_params.get("start") == "1"
-    if not _LAST_RUN and not autostart:
-        return RedirectResponse(url="/welcome", status_code=307)
-
+    # No redirect here. Bouncing / to /welcome whenever no run exists makes the
+    # Overview nav link dead after a reset - you click it and land somewhere
+    # else. The dashboard renders its own empty state instead, and /welcome is
+    # reachable from the nav whenever it is wanted.
     totals = dataset_tools.portfolio_totals()
     ctx = _base_context(request)
-    ctx["autostart"] = autostart
+    ctx["autostart"] = request.query_params.get("start") == "1"
+    ctx["node_details"] = _LAST_NODE_DETAILS
     ctx.update({
         "totals": totals,
         "findings": (list(_LAST_RUN.get("waste_findings", [])) + list(_LAST_RUN.get("benchmark_findings", [])))[:8],
@@ -219,6 +244,7 @@ async def api_run():
 
             final_state = await task
             _LAST_RUN = final_state
+            _record_node_details(final_state)
             persistence.save_run(final_state)
             yield f"event: result\ndata: {json.dumps({'ok': True})}\n\n"
         finally:

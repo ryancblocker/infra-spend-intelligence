@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // --- Pipeline run (Mission Control) ---
 
-function pipelineRunner() {
+function pipelineRunner(completedDetails) {
   const nodeOrder = ["discovery", "extraction", "waste", "benchmark", "renewal", "optimization", "critic", "narrator"];
 
   // Render-pacing floor only. The offline pipeline completes in ~0.02s, which is
@@ -50,17 +50,27 @@ function pipelineRunner() {
   // frame. This spaces out *rendering* - every status and detail string shown is
   // the real one reported by the backend. With a local model attached, actual
   // latency exceeds this floor and it has no effect at all.
-  const MIN_DWELL_MS = 400;
+  const MIN_DWELL_MS = 900;
+
+  // Details from a previous completed run, so the pipeline renders finished on a
+  // fresh page load rather than resetting every node to grey.
+  const done = completedDetails || {};
+  const hasPrevious = Object.keys(done).length > 0;
 
   return {
     running: false,
-    nodes: nodeOrder.map((id) => ({ id, status: "pending", detail: "" })),
+    nodes: nodeOrder.map((id) => ({
+      id,
+      status: hasPrevious ? "done" : "pending",
+      detail: done[id] || "",
+    })),
     log: [],
     _queue: [],
     _draining: false,
     _finished: false,
     _started: false,
     _source: null,
+    complete: false,
 
     start() {
       if (this.running || this._started) return;
@@ -115,9 +125,12 @@ function pipelineRunner() {
           this._draining = false;
           if (this._finished) {
             this.running = false;
-            // Navigate rather than reload: reloading would preserve ?start=1
-            // and immediately kick off another run.
-            window.location.href = "/";
+            this.complete = true;
+            // Let the final node hold its green state for a beat, then load the
+            // results. The reloaded page renders every node already complete
+            // (details come from the server), so the pipeline stays green
+            // instead of snapping back to grey.
+            setTimeout(() => { window.location.href = "/"; }, 1400);
           }
           return;
         }
