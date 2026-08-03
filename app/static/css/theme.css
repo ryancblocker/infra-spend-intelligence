@@ -698,3 +698,14 @@ tbody a.row-link:hover { color: var(--brand); }
 @media (max-width: 560px) {
   .welcome-stat--lead { grid-column: span 2; }
 }
+
+.kpi-empty { color: var(--ink-muted); opacity: 0.55; }
+
+.welcome-tag--example {
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--ink-secondary);
+}
+
+.welcome-stats--example { opacity: 0.88; }

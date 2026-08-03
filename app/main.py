@@ -126,21 +126,28 @@ AGENT_PREVIEW = [
 ]
 
 
+# An illustrative portfolio shown on the explainer page, deliberately NOT the
+# data loaded in this instance. Real figures are Discovery's output, and showing
+# them before the pipeline runs gives away the result the demo is meant to
+# reveal. The template labels this as an example in the copy so it can never be
+# mistaken for the loaded portfolio.
+EXAMPLE_PORTFOLIO = {
+    "company": "Northwind Logistics",
+    "annual_spend": 8_400_000,
+    "contracts": 32,
+    "circuits": 61,
+    "colo": 24,
+    "licenses": 27,
+    "mobile_lines": 118,
+    "docs": 12,
+}
+
+
 @app.get("/welcome", response_class=HTMLResponse)
 def welcome(request: Request):
     """Permanent explainer that doubles as the first-run entry point."""
-    try:
-        totals = dataset_tools.portfolio_totals()
-    except Exception:
-        totals = {"total_annual_spend": 0, "total_monthly_spend": 0,
-                  "spend_by_category": {}, "asset_counts": {}}
-    try:
-        doc_count = len(list(config.CONTRACT_DOCS_DIR.glob("*.txt")))
-    except Exception:
-        doc_count = 0
-
     ctx = _base_context(request)
-    ctx.update({"totals": totals, "doc_count": doc_count, "agents": AGENT_PREVIEW})
+    ctx.update({"example": EXAMPLE_PORTFOLIO, "agents": AGENT_PREVIEW})
     return templates.TemplateResponse(request, "welcome.html", ctx)
 
 

@@ -9,26 +9,50 @@
   </div>
 </div>
 
+{# Every figure here is a pipeline result - total spend is what the Discovery
+   agent computes. Showing them before a run gives away the outcome and makes
+   the first agent look redundant, so they stay blank until the pipeline has
+   actually produced them. #}
 <div class="kpi-grid">
   <div class="kpi-card">
     <div class="kpi-label">Total Annual Spend</div>
-    <div class="kpi-value figures" data-countup="{{ totals.total_annual_spend }}" data-prefix="$">$0</div>
-    <div class="kpi-sub">{{ totals.asset_counts.contracts }} contracts under management</div>
+    {% if has_run %}
+      <div class="kpi-value figures" data-countup="{{ totals.total_annual_spend }}" data-prefix="$">$0</div>
+      <div class="kpi-sub">{{ totals.asset_counts.contracts }} contracts under management</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">discovered when the pipeline runs</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Potential Annual Savings</div>
-    <div class="kpi-value accent figures" data-countup="{{ summary.total_potential_annual_savings if summary else 0 }}" data-prefix="$">$0</div>
-    <div class="kpi-sub">{{ summary.number_of_findings if summary else 0 }} findings identified</div>
+    {% if has_run %}
+      <div class="kpi-value accent figures" data-countup="{{ summary.total_potential_annual_savings if summary else 0 }}" data-prefix="$">$0</div>
+      <div class="kpi-sub">{{ summary.number_of_findings if summary else 0 }} findings identified</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">no findings yet</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">High Renewal Risk</div>
-    <div class="kpi-value figures">{{ summary.high_risk_contracts if summary else "—" }}</div>
-    <div class="kpi-sub">contracts inside their notice window or renewing soon</div>
+    {% if has_run %}
+      <div class="kpi-value figures">{{ summary.high_risk_contracts if summary else "—" }}</div>
+      <div class="kpi-sub">contracts inside their notice window or renewing soon</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">not yet assessed</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Portfolio Assets</div>
-    <div class="kpi-value figures">{{ totals.asset_counts.circuits + totals.asset_counts.colo + totals.asset_counts.licenses + totals.asset_counts.mobile_lines }}</div>
-    <div class="kpi-sub">circuits, colocation, licenses &amp; mobile lines</div>
+    {% if has_run %}
+      <div class="kpi-value figures">{{ totals.asset_counts.circuits + totals.asset_counts.colo + totals.asset_counts.licenses + totals.asset_counts.mobile_lines }}</div>
+      <div class="kpi-sub">circuits, colocation, licenses &amp; mobile lines</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">not yet counted</div>
+    {% endif %}
   </div>
 </div>
 

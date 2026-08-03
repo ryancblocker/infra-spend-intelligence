@@ -26,42 +26,48 @@
 
   <section class="welcome-section">
     <div class="welcome-section-head">
-      <h2 class="welcome-h2">Loaded portfolio</h2>
-      <span class="welcome-tag">Synthetic sample data</span>
+      <h2 class="welcome-h2">What a portfolio looks like</h2>
+      <span class="welcome-tag welcome-tag--example">Illustrative example</span>
     </div>
-    <div class="welcome-stats">
+    <p class="welcome-fine welcome-fine--top">
+      Below is an <strong>example</strong> of the kind of portfolio PACT analyses &mdash; a
+      fictional mid-size company, <strong>{{ example.company }}</strong>. These are not the
+      figures loaded in this instance; your actual totals are what the Discovery agent
+      reports when you run the analysis.
+    </p>
+    <div class="welcome-stats welcome-stats--example">
       <div class="welcome-stat welcome-stat--lead">
-        <div class="welcome-stat-value">{{ totals.total_annual_spend | money }}</div>
+        <div class="welcome-stat-value">{{ example.annual_spend | money }}</div>
         <div class="welcome-stat-label">Annual spend</div>
       </div>
       <div class="welcome-stat">
-        <div class="welcome-stat-value">{{ totals.asset_counts.get('contracts', 0) }}</div>
+        <div class="welcome-stat-value">{{ example.contracts }}</div>
         <div class="welcome-stat-label">Contracts</div>
       </div>
       <div class="welcome-stat">
-        <div class="welcome-stat-value">{{ totals.asset_counts.get('circuits', 0) }}</div>
+        <div class="welcome-stat-value">{{ example.circuits }}</div>
         <div class="welcome-stat-label">Circuits</div>
       </div>
       <div class="welcome-stat">
-        <div class="welcome-stat-value">{{ totals.asset_counts.get('colo', 0) }}</div>
+        <div class="welcome-stat-value">{{ example.colo }}</div>
         <div class="welcome-stat-label">Colocation</div>
       </div>
       <div class="welcome-stat">
-        <div class="welcome-stat-value">{{ totals.asset_counts.get('licenses', 0) }}</div>
+        <div class="welcome-stat-value">{{ example.licenses }}</div>
         <div class="welcome-stat-label">Licenses</div>
       </div>
       <div class="welcome-stat">
-        <div class="welcome-stat-value">{{ totals.asset_counts.get('mobile_lines', 0) }}</div>
+        <div class="welcome-stat-value">{{ example.mobile_lines }}</div>
         <div class="welcome-stat-label">Mobile lines</div>
       </div>
       <div class="welcome-stat">
-        <div class="welcome-stat-value">{{ doc_count }}</div>
+        <div class="welcome-stat-value">{{ example.docs }}</div>
         <div class="welcome-stat-label">Contract docs</div>
       </div>
     </div>
     <p class="welcome-fine">
-      Generated data modelled on 2026 market pricing &mdash; not a real company's contracts.
-      Uploading your own documents is planned, not yet built.
+      This instance runs on synthetic data modelled on 2026 market pricing &mdash; not a real
+      company's contracts. Uploading your own documents is planned, not yet built.
     </p>
   </section>
 
