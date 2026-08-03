@@ -59,29 +59,51 @@ function pipelineRunner() {
     _queue: [],
     _draining: false,
     _finished: false,
+    _started: false,
+    _source: null,
 
     start() {
-      if (this.running) return;
+      if (this.running || this._started) return;
+      this._started = true;
       this.running = true;
       this.nodes.forEach((n) => { n.status = "pending"; n.detail = ""; });
       this.log = [];
       this._queue = [];
       this._finished = false;
 
+      // Drop ?start=1 from the address bar immediately. If it survives, any
+      // reload - a manual refresh, a restored tab, a browser back - re-triggers
+      // the autostart and the page runs the pipeline again in a loop.
+      if (window.location.search) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+
       const source = new EventSource("/api/run");
+      this._source = source;
+
       source.onmessage = (evt) => {
         this._queue.push(JSON.parse(evt.data));
         this._drain();
       };
       source.addEventListener("result", () => {
-        source.close();
+        this._close();
         this._finished = true;
         this._drain();
       });
+      // EventSource reconnects automatically whenever the stream ends - including
+      // a clean end - which would kick off an entirely new pipeline run. Always
+      // close it explicitly and never reopen.
       source.onerror = () => {
-        source.close();
-        this.running = false;
+        this._close();
+        if (!this._finished) this.running = false;
       };
+    },
+
+    _close() {
+      if (this._source) {
+        this._source.close();
+        this._source = null;
+      }
     },
 
     _drain() {

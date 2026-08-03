@@ -1,85 +1,92 @@
 {% extends "base.html" %}
-{% block title %}Welcome{% endblock %}
+{% block title %}How it works{% endblock %}
 {% block content %}
 
-<div class="welcome-hero">
-  <div class="welcome-eyebrow">Portfolio Agentic Contract Tracker</div>
-  <h1 class="welcome-title">Find the money hiding in your infrastructure contracts.</h1>
-  <p class="welcome-lede">
-    PACT runs eight agents over a portfolio of telecom, colocation, software and mobility
-    contracts &mdash; reading the actual contract language, checking rates against market
-    benchmarks, and recommending what to keep, cancel or renegotiate. It runs entirely on
-    your machine against a local model. No contract text leaves this computer.
-  </p>
+<div class="welcome">
 
-  <div class="welcome-actions">
-    {% if has_run %}
-      <a class="btn btn-primary btn-lg" href="/">View Dashboard</a>
-      <button class="btn btn-ghost" onclick="resetRun()">Reset &amp; start over</button>
-    {% else %}
-      <a class="btn btn-primary btn-lg" href="/?start=1">Run the analysis</a>
-    {% endif %}
-    <span class="welcome-mode">Model backend: <strong>{{ llm_mode }}</strong></span>
-  </div>
-</div>
+  <header class="welcome-hero">
+    <div class="welcome-eyebrow">Portfolio Agentic Contract Tracker</div>
+    <h1 class="welcome-title">Find the money hiding in your infrastructure contracts.</h1>
+    <p class="welcome-lede">
+      Eight agents read your telecom, colocation, software and mobility contracts &mdash; pulling
+      terms out of the actual legal text, checking rates against market benchmarks, and
+      recommending what to keep, cancel or renegotiate. Everything runs locally. No contract
+      text leaves this machine.
+    </p>
+    <div class="welcome-actions">
+      {% if has_run %}
+        <a class="btn btn-primary btn-lg" href="/">View dashboard</a>
+        <button class="btn btn-ghost" onclick="resetRun()">Reset &amp; start over</button>
+      {% else %}
+        <a class="btn btn-primary btn-lg" href="/?start=1">Run the analysis</a>
+      {% endif %}
+      <span class="welcome-mode">Backend: <strong>{{ llm_mode }}</strong></span>
+    </div>
+  </header>
 
-<div class="card">
-  <div class="section-title">What's loaded</div>
-  <p class="welcome-note">
-    A <strong>synthetic sample portfolio</strong> &mdash; generated data modelled on 2026 market
-    pricing, not a real company's contracts. Uploading your own contract documents is planned
-    but not yet built.
-  </p>
-  <div class="welcome-stats">
-    <div class="welcome-stat">
-      <div class="welcome-stat-value">{{ totals.total_annual_spend | money }}</div>
-      <div class="welcome-stat-label">Annual spend</div>
+  <section class="welcome-section">
+    <div class="welcome-section-head">
+      <h2 class="welcome-h2">Loaded portfolio</h2>
+      <span class="welcome-tag">Synthetic sample data</span>
     </div>
-    <div class="welcome-stat">
-      <div class="welcome-stat-value">{{ totals.asset_counts.get('contracts', 0) }}</div>
-      <div class="welcome-stat-label">Contracts</div>
-    </div>
-    <div class="welcome-stat">
-      <div class="welcome-stat-value">{{ totals.asset_counts.get('circuits', 0) }}</div>
-      <div class="welcome-stat-label">Circuits</div>
-    </div>
-    <div class="welcome-stat">
-      <div class="welcome-stat-value">{{ totals.asset_counts.get('colo', 0) }}</div>
-      <div class="welcome-stat-label">Colocation</div>
-    </div>
-    <div class="welcome-stat">
-      <div class="welcome-stat-value">{{ totals.asset_counts.get('licenses', 0) }}</div>
-      <div class="welcome-stat-label">Licenses</div>
-    </div>
-    <div class="welcome-stat">
-      <div class="welcome-stat-value">{{ totals.asset_counts.get('mobile_lines', 0) }}</div>
-      <div class="welcome-stat-label">Mobile lines</div>
-    </div>
-    <div class="welcome-stat">
-      <div class="welcome-stat-value">{{ doc_count }}</div>
-      <div class="welcome-stat-label">Contract documents</div>
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <div class="section-title">What happens when you run it</div>
-  <p class="welcome-note">
-    Eight agents, executed as a graph: Discovery first, then four workers in parallel, then
-    Optimization, then a Critic that can send work back to be redone before the Narrator
-    writes the summary.
-  </p>
-  <ol class="welcome-agents">
-    {% for name, description in agents %}
-    <li class="welcome-agent">
-      <span class="welcome-agent-num">{{ loop.index }}</span>
-      <div>
-        <div class="welcome-agent-name">{{ name }}</div>
-        <div class="welcome-agent-desc">{{ description }}</div>
+    <div class="welcome-stats">
+      <div class="welcome-stat welcome-stat--lead">
+        <div class="welcome-stat-value">{{ totals.total_annual_spend | money }}</div>
+        <div class="welcome-stat-label">Annual spend</div>
       </div>
-    </li>
-    {% endfor %}
-  </ol>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ totals.asset_counts.get('contracts', 0) }}</div>
+        <div class="welcome-stat-label">Contracts</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ totals.asset_counts.get('circuits', 0) }}</div>
+        <div class="welcome-stat-label">Circuits</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ totals.asset_counts.get('colo', 0) }}</div>
+        <div class="welcome-stat-label">Colocation</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ totals.asset_counts.get('licenses', 0) }}</div>
+        <div class="welcome-stat-label">Licenses</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ totals.asset_counts.get('mobile_lines', 0) }}</div>
+        <div class="welcome-stat-label">Mobile lines</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ doc_count }}</div>
+        <div class="welcome-stat-label">Contract docs</div>
+      </div>
+    </div>
+    <p class="welcome-fine">
+      Generated data modelled on 2026 market pricing &mdash; not a real company's contracts.
+      Uploading your own documents is planned, not yet built.
+    </p>
+  </section>
+
+  <section class="welcome-section">
+    <div class="welcome-section-head">
+      <h2 class="welcome-h2">The pipeline</h2>
+      <span class="welcome-tag">8 agents</span>
+    </div>
+    <p class="welcome-fine welcome-fine--top">
+      Discovery runs first, then four agents work in parallel, then Optimization. The Critic
+      can send weak recommendations back to be redone before the Narrator writes the summary.
+    </p>
+    <ol class="welcome-agents">
+      {% for name, description in agents %}
+      <li class="welcome-agent">
+        <span class="welcome-agent-num">{{ loop.index }}</span>
+        <div class="welcome-agent-body">
+          <div class="welcome-agent-name">{{ name }}</div>
+          <div class="welcome-agent-desc">{{ description }}</div>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
 </div>
 
 <script>
