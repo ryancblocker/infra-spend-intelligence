@@ -27,7 +27,10 @@ TEMPLATES_DIR = APP_DIR / "templates"
 LLM_MODE = os.environ.get("PACT_LLM_MODE", "auto").strip().lower()
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_CHAT_MODEL = os.environ.get("PACT_OLLAMA_MODEL", "qwen3:8b")
+# qwen3:1.7b, not a larger sibling: this runs on an 8 GB unified-memory Mac,
+# where qwen3:8b (~5.2 GB resident) leaves too little for the OS and hangs the
+# machine outright. Size up only on a box with real memory headroom.
+OLLAMA_CHAT_MODEL = os.environ.get("PACT_OLLAMA_MODEL", "qwen3:1.7b")
 OLLAMA_EMBED_MODEL = os.environ.get("PACT_OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")

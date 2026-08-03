@@ -5,4 +5,7 @@ __pycache__/
 
 runtime/
 
+# Subagent-driven-development scratch: ledgers, briefs, review packages.
+.superpowers/
+
 .DS_Store
