@@ -27,9 +27,12 @@ UPLOAD_DIR = RUNTIME_DIR / "uploads"
 UPLOAD_MANIFEST_PATH = UPLOAD_DIR / "manifest.json"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 ALLOWED_UPLOAD_SUFFIXES = (".pdf", ".txt")
-# A digital PDF of a contract yields thousands of characters. Under this, the
-# file is image-only and needs OCR, which is out of scope - so say so plainly
-# rather than creating a contract with no terms and no explanation.
+# The minimum-content floor for an uploaded document, in characters of readable
+# text. A contract of any format yields thousands; under this there is nothing
+# to extract, so say so plainly rather than creating a contract with no terms
+# and no explanation. Named for the case that motivated it - a PDF under this
+# floor is image-only and needs OCR, which is out of scope - but it applies to
+# .txt as well, where the equivalent failure is an empty or whitespace-only file.
 SCANNED_PDF_MIN_CHARS = 200
 
 # --- LLM backend ---

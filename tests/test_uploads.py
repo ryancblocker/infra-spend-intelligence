@@ -69,13 +69,34 @@ DIGITAL_PDF_TEXT = (
 )
 
 
+# Uploaded .txt is held to the same minimum-content floor as a PDF (see
+# config.SCANNED_PDF_MIN_CHARS), so a fixture body has to read like an actual
+# contract rather than a single line. This boilerplate is the padding: it states
+# nothing the offline extractor looks for, so it changes no assertion about the
+# terms a fixture is meant to exercise.
+BOILERPLATE = (
+    "This Agreement is made between the parties identified above and governs the "
+    "provision of the services described in the attached schedules. Each party "
+    "represents that the individual signing has authority to bind it. Notices are "
+    "effective on receipt. Neither party may assign this Agreement without the "
+    "prior written consent of the other party, which shall not be unreasonably "
+    "withheld.\n"
+)
+
+
+def _txt(*lines: str) -> bytes:
+    """A .txt upload fixture: the lines under test, padded past the floor."""
+    return ("\n".join(lines) + "\n" + BOILERPLATE).encode("utf-8")
+
+
 def test_txt_upload_produces_text():
-    text = document_loader.load_document("contract.txt", b"VENDOR: Acme Corp\n")
+    text = document_loader.load_document("contract.txt", _txt("VENDOR: Acme Corp"))
     assert "Acme Corp" in text
 
 
 def test_txt_falls_back_to_latin1_on_bad_utf8():
-    text = document_loader.load_document("contract.txt", b"VENDOR: Caf\xe9 Ltd\n")
+    latin1 = ("VENDOR: Caf\xe9 Ltd\n" + BOILERPLATE).encode("latin-1")
+    text = document_loader.load_document("contract.txt", latin1)
     assert "Caf" in text
 
 
@@ -147,22 +168,22 @@ def test_oversized_file_is_rejected(clean_uploads):
 
 
 def test_store_allocates_sequential_upload_ids(clean_uploads):
-    first, _, _ = uploads.store("one.txt", b"VENDOR: One Corp\n")
-    second, _, _ = uploads.store("two.txt", b"VENDOR: Two Corp\n")
+    first, _, _ = uploads.store("one.txt", _txt("VENDOR: One Corp"))
+    second, _, _ = uploads.store("two.txt", _txt("VENDOR: Two Corp"))
     assert first == "U-0001"
     assert second == "U-0002"
 
 
 def test_duplicate_filenames_both_persist(clean_uploads):
-    _, first_path, _ = uploads.store("same.txt", b"VENDOR: First\n")
-    _, second_path, _ = uploads.store("same.txt", b"VENDOR: Second\n")
+    _, first_path, _ = uploads.store("same.txt", _txt("VENDOR: First"))
+    _, second_path, _ = uploads.store("same.txt", _txt("VENDOR: Second"))
     assert first_path != second_path
     assert second_path.name == "same-2.txt"
     assert first_path.exists() and second_path.exists()
 
 
 def test_store_records_manifest_entry(clean_uploads):
-    contract_id, path, text = uploads.store("deal.txt", b"VENDOR: Acme\n")
+    contract_id, path, text = uploads.store("deal.txt", _txt("VENDOR: Acme"))
     manifest = uploads.read_manifest()
     assert contract_id in manifest["entries"]
     assert manifest["entries"][contract_id]["original_filename"] == "deal.txt"
@@ -171,7 +192,7 @@ def test_store_records_manifest_entry(clean_uploads):
 
 
 def test_remove_deletes_file_and_manifest_entry(clean_uploads):
-    contract_id, path, _ = uploads.store("gone.txt", b"VENDOR: Acme\n")
+    contract_id, path, _ = uploads.store("gone.txt", _txt("VENDOR: Acme"))
     assert uploads.remove(contract_id) is True
     assert not path.exists()
     assert contract_id not in uploads.read_manifest()["entries"]
@@ -186,10 +207,10 @@ def test_remove_unknown_id_returns_false(clean_uploads):
 
 
 def test_id_not_reused_after_removing_highest(clean_uploads):
-    first, _, _ = uploads.store("one.txt", b"VENDOR: One\n")
-    second, _, _ = uploads.store("two.txt", b"VENDOR: Two\n")
+    first, _, _ = uploads.store("one.txt", _txt("VENDOR: One"))
+    second, _, _ = uploads.store("two.txt", _txt("VENDOR: Two"))
     assert uploads.remove(second) is True
-    third, _, _ = uploads.store("three.txt", b"VENDOR: Three\n")
+    third, _, _ = uploads.store("three.txt", _txt("VENDOR: Three"))
     assert first == "U-0001"
     assert second == "U-0002"
     assert third == "U-0003"  # not U-0002 reissued
@@ -207,13 +228,13 @@ def test_missing_manifest_file_is_not_an_error(clean_uploads):
 
 
 def test_write_manifest_leaves_no_temp_file_behind(clean_uploads):
-    uploads.store("one.txt", b"VENDOR: Acme\n")
+    uploads.store("one.txt", _txt("VENDOR: Acme"))
     assert list(clean_uploads.glob(".manifest-*")) == []
     assert config.UPLOAD_MANIFEST_PATH.exists()
 
 
 def test_write_manifest_is_atomic_on_failure(clean_uploads, monkeypatch):
-    uploads.store("one.txt", b"VENDOR: Acme\n")
+    uploads.store("one.txt", _txt("VENDOR: Acme"))
     original = uploads.read_manifest()
 
     def boom(*args, **kwargs):
@@ -230,7 +251,7 @@ def test_write_manifest_is_atomic_on_failure(clean_uploads, monkeypatch):
 
 
 def test_remove_tolerates_entry_missing_stored_filename(clean_uploads):
-    contract_id, _, _ = uploads.store("weird.txt", b"VENDOR: Acme\n")
+    contract_id, _, _ = uploads.store("weird.txt", _txt("VENDOR: Acme"))
     manifest = uploads.read_manifest()
     del manifest["entries"][contract_id]["stored_filename"]
     uploads.write_manifest(manifest)
@@ -244,7 +265,7 @@ def test_null_byte_in_filename_is_stripped(clean_uploads):
 
 
 def test_null_byte_in_filename_does_not_crash_store(clean_uploads):
-    contract_id, path, text = uploads.store("evil\x00.txt", b"VENDOR: Acme\n")
+    contract_id, path, text = uploads.store("evil\x00.txt", _txt("VENDOR: Acme"))
     assert path.exists()
     assert "Acme" in text
 
@@ -254,7 +275,7 @@ def test_path_traversal_cannot_escape_upload_dir_end_to_end(clean_uploads):
     proves the file that store() actually writes lands inside UPLOAD_DIR, not
     just that the intermediate basename looks clean."""
     contract_id, path, _ = uploads.store(
-        "../../etc/passwd.txt", b"VENDOR: Acme\n"
+        "../../etc/passwd.txt", _txt("VENDOR: Acme")
     )
     assert path.parent == config.UPLOAD_DIR
     assert path.exists()
@@ -499,8 +520,8 @@ def client(clean_uploads, monkeypatch):
 
 
 def test_upload_txt_returns_a_contract_id(client):
-    body = b"VENDOR: Acme Corp\nCATEGORY: Network Circuit Services\n" \
-           b"This Agreement continues through 2026-12-31 and will automatically renew.\n"
+    body = _txt("VENDOR: Acme Corp", "CATEGORY: Network Circuit Services",
+                "This Agreement continues through 2026-12-31 and will automatically renew.")
     response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
     assert response.status_code == 200
     payload = response.json()
@@ -509,7 +530,7 @@ def test_upload_txt_returns_a_contract_id(client):
 
 
 def test_upload_creates_a_contracts_row(client):
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     contract_id = client.post(
         "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
     ).json()["contract_id"]
@@ -536,7 +557,7 @@ def test_scanned_pdf_upload_returns_422(client):
 
 
 def test_remove_deletes_row_and_file(client):
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     contract_id = client.post(
         "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
     ).json()["contract_id"]
@@ -571,7 +592,7 @@ def test_upload_with_corrupt_manifest_returns_500(client):
     route caught it, so the user got an unhandled 500 traceback instead of an
     error naming the actual problem."""
     config.UPLOAD_MANIFEST_PATH.write_text("{not valid json", encoding="utf-8")
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
     assert response.status_code == 500
     detail = response.json()["detail"].lower()
@@ -625,7 +646,7 @@ def test_upload_failure_during_extraction_leaves_no_trace(client, monkeypatch):
 
     monkeypatch.setattr(extraction, "extract_one", boom)
 
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
 
     assert response.status_code == 500
@@ -661,7 +682,7 @@ def test_write_manifest_failure_after_rename_rolls_back_completely(client, monke
 
     monkeypatch.setattr(uploads, "write_manifest", flaky_write_manifest)
 
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
 
     assert response.status_code == 500
@@ -691,7 +712,7 @@ def test_rollback_failure_does_not_mask_the_original_error(client, monkeypatch):
     monkeypatch.setattr(extraction, "extract_one", boom_extract)
     monkeypatch.setattr(uploads, "remove", boom_remove)
 
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
 
     assert response.status_code == 500
@@ -701,7 +722,7 @@ def test_rollback_failure_does_not_mask_the_original_error(client, monkeypatch):
 
 
 def test_waste_produces_no_findings_for_an_uploaded_contract(client):
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     contract_id = client.post(
         "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
     ).json()["contract_id"]
@@ -720,7 +741,7 @@ def test_waste_ignores_uploads_even_with_an_empty_owner(client):
     string. If a future edit blanks that placeholder out, the upload-id guard
     in waste.py - not the string's truthiness - must still be what keeps
     contract_owner_gap (or any other waste finding) from firing."""
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     contract_id = client.post(
         "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
     ).json()["contract_id"]
@@ -752,7 +773,7 @@ def test_mission_control_renders_upload_card(client):
 def test_mission_control_lists_uploaded_contract(client):
     """After a real upload, the dashboard's upload list must show the new
     contract id and the vendor extracted from it."""
-    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
     contract_id = client.post(
         "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
     ).json()["contract_id"]
@@ -836,9 +857,10 @@ def test_upload_status_message_is_never_built_via_innerhtml():
 
 
 def test_renewal_risk_includes_an_uploaded_contract(client):
-    body = (b"VENDOR: Acme Corp\nThis Agreement continues through 2026-09-30 and will "
-            b"automatically renew unless either party gives notice of non-renewal at "
-            b"least 30 days before expiration.\n")
+    body = _txt("VENDOR: Acme Corp",
+                "This Agreement continues through 2026-09-30 and will automatically renew "
+                "unless either party gives notice of non-renewal at least 30 days before "
+                "expiration.")
     contract_id = client.post(
         "/api/upload", files={"file": ("soon.txt", body, "text/plain")}
     ).json()["contract_id"]
@@ -1005,3 +1027,29 @@ def test_reindexing_the_same_id_replaces_its_chunks(client):
     assert len(hits) == 1
     assert "2028-01-01" in hits[0]["text"]
     vector_store.remove_document("U-9002")
+
+
+# ---------------------------------------------------------------------------
+# A .txt upload gets the same minimum-content floor as a PDF
+# ---------------------------------------------------------------------------
+
+
+def test_empty_txt_is_rejected():
+    """An empty file produced a 200 and a contract row with no terms - exactly
+    the outcome SCANNED_PDF_MIN_CHARS exists to prevent for PDFs. The floor is
+    a property of "is this a readable contract document", not of the format."""
+    with pytest.raises(UnsupportedDocument) as excinfo:
+        document_loader.load_document("empty.txt", b"")
+    assert "text" in excinfo.value.reason.lower()
+
+
+def test_whitespace_only_txt_is_rejected():
+    with pytest.raises(UnsupportedDocument) as excinfo:
+        document_loader.load_document("blank.txt", b"   \n\t\n   ")
+    assert str(config.SCANNED_PDF_MIN_CHARS) in excinfo.value.reason
+
+
+def test_empty_txt_upload_returns_422(client):
+    response = client.post("/api/upload", files={"file": ("empty.txt", b"  \n ", "text/plain")})
+    assert response.status_code == 422
+    assert response.json()["detail"]

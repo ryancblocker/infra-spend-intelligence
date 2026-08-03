@@ -41,11 +41,30 @@ def load_document(filename: str, data: bytes) -> str:
     return _load_pdf(data)
 
 
+def _is_too_short(text: str) -> bool:
+    """The minimum-content floor, applied to every accepted format.
+
+    A document with no readable text is not a contract, whatever its extension.
+    Enforcing this only for PDFs let an empty or whitespace-only .txt through to
+    a 200 and a contract row with no terms - the precise outcome the threshold
+    exists to prevent, and the same failure mode the PDF branch names OCR for."""
+    return len(text.strip()) < config.SCANNED_PDF_MIN_CHARS
+
+
 def _load_txt(data: bytes) -> str:
     try:
-        return data.decode("utf-8")
+        text = data.decode("utf-8")
     except UnicodeDecodeError:
-        return data.decode("latin-1", errors="replace")
+        text = data.decode("latin-1", errors="replace")
+
+    if _is_too_short(text):
+        raise UnsupportedDocument(
+            f"This text file contains almost no readable text "
+            f"({len(text.strip())} characters). A contract document should have "
+            f"at least {config.SCANNED_PDF_MIN_CHARS} characters of text - please "
+            "check the file and upload the full document."
+        )
+    return text
 
 
 def _load_pdf(data: bytes) -> str:
@@ -58,7 +77,7 @@ def _load_pdf(data: bytes) -> str:
     except (PdfReadError, ValueError, KeyError, AttributeError) as exc:
         raise UnsupportedDocument(f"This PDF could not be parsed: {exc}") from exc
 
-    if len(text.strip()) < config.SCANNED_PDF_MIN_CHARS:
+    if _is_too_short(text):
         raise UnsupportedDocument(
             "This looks like a scanned or image-only PDF - almost no selectable text was "
             "found. OCR is not supported; please upload a text-based PDF or a .txt file."
