@@ -64,6 +64,7 @@ def contract_detail_view(state: PipelineState, contract_id: str) -> dict | None:
         "findings": findings,
         "scenarios": scenarios,
         "source_text": source_text,
+        "is_upload": (contract or {}).get("source") == "upload",
     }
 
 

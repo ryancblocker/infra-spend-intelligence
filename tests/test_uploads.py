@@ -696,3 +696,34 @@ def test_rollback_failure_does_not_mask_the_original_error(client, monkeypatch):
     detail = response.json()["detail"]
     assert "discarded" in detail.lower()
     assert "simulated extraction crash" in detail
+
+
+def test_waste_produces_no_findings_for_an_uploaded_contract(client):
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    contract_id = client.post(
+        "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
+    ).json()["contract_id"]
+
+    from app.agents import waste
+    findings = waste.run()
+    assert not [f for f in findings if f.contract_id == contract_id], (
+        "waste findings require utilization telemetry, which a contract document "
+        "does not contain - inventing one would be a fabricated number"
+    )
+
+
+def test_renewal_risk_includes_an_uploaded_contract(client):
+    body = (b"VENDOR: Acme Corp\nThis Agreement continues through 2026-09-30 and will "
+            b"automatically renew unless either party gives notice of non-renewal at "
+            b"least 30 days before expiration.\n")
+    contract_id = client.post(
+        "/api/upload", files={"file": ("soon.txt", body, "text/plain")}
+    ).json()["contract_id"]
+
+    # renewal.run() returns (risks, narrative) - unpack it, do not iterate the tuple.
+    from app.agents import renewal
+    risks, _ = renewal.run()
+    assert any(r.contract_id == contract_id for r in risks), (
+        "end date, notice days and auto-renew are all stated in the document, so "
+        "renewal risk must cover uploads"
+    )
