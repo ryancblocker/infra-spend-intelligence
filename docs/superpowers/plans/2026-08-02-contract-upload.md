@@ -177,9 +177,26 @@ def test_txt_falls_back_to_latin1_on_bad_utf8():
     assert "Caf" in text
 
 
+# Must exceed SCANNED_PDF_MIN_CHARS, or the fixture meant to represent a real
+# digital contract trips the image-only guard. No parentheses: they delimit
+# strings in PDF syntax and would need escaping.
+DIGITAL_PDF_TEXT = (
+    "MASTER SERVICES AGREEMENT between ACME CORP and the Customer. "
+    "This Agreement continues through 2026-12-31 and will automatically renew "
+    "for successive twelve month terms unless either party gives written notice "
+    "of non-renewal at least 60 days before expiration of the then-current term."
+)
+
+
 def test_digital_pdf_produces_text():
-    text = document_loader.load_document("contract.pdf", _digital_pdf("VENDOR ACME CORP"))
+    text = document_loader.load_document("contract.pdf", _digital_pdf(DIGITAL_PDF_TEXT))
     assert "ACME" in text.upper()
+
+
+def test_digital_pdf_fixture_clears_the_scanned_threshold():
+    """Guards the fixture itself: if it ever drops below the floor, the test above
+    would fail for a reason that has nothing to do with the loader."""
+    assert len(DIGITAL_PDF_TEXT) > config.SCANNED_PDF_MIN_CHARS
 
 
 def test_scanned_pdf_is_rejected():
