@@ -108,3 +108,72 @@ def test_unsupported_extension_is_rejected():
     with pytest.raises(UnsupportedDocument) as excinfo:
         document_loader.load_document("contract.docx", b"anything")
     assert ".pdf" in excinfo.value.reason and ".txt" in excinfo.value.reason
+
+
+from pathlib import Path
+
+from app import config
+from app.tools import uploads
+from app.tools.uploads import UploadTooLarge
+
+
+@pytest.fixture
+def clean_uploads(tmp_path, monkeypatch):
+    """Point upload storage at a temp dir so tests never touch runtime/uploads/."""
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir()
+    monkeypatch.setattr(config, "UPLOAD_DIR", upload_dir)
+    monkeypatch.setattr(config, "UPLOAD_MANIFEST_PATH", upload_dir / "manifest.json")
+    return upload_dir
+
+
+def test_path_traversal_filename_is_sanitized(clean_uploads):
+    assert uploads.safe_basename("../../etc/passwd") == "passwd"
+    assert uploads.safe_basename("/absolute/path/contract.txt") == "contract.txt"
+    assert uploads.safe_basename("a/b/c/deal.pdf") == "deal.pdf"
+
+
+def test_empty_filename_gets_a_fallback(clean_uploads):
+    assert uploads.safe_basename("../..") == "upload"
+    assert uploads.safe_basename("") == "upload"
+
+
+def test_oversized_file_is_rejected(clean_uploads):
+    oversized = b"x" * (config.MAX_UPLOAD_BYTES + 1)
+    with pytest.raises(UploadTooLarge):
+        uploads.store("big.txt", oversized)
+
+
+def test_store_allocates_sequential_upload_ids(clean_uploads):
+    first, _, _ = uploads.store("one.txt", b"VENDOR: One Corp\n")
+    second, _, _ = uploads.store("two.txt", b"VENDOR: Two Corp\n")
+    assert first == "U-0001"
+    assert second == "U-0002"
+
+
+def test_duplicate_filenames_both_persist(clean_uploads):
+    _, first_path, _ = uploads.store("same.txt", b"VENDOR: First\n")
+    _, second_path, _ = uploads.store("same.txt", b"VENDOR: Second\n")
+    assert first_path != second_path
+    assert second_path.name == "same-2.txt"
+    assert first_path.exists() and second_path.exists()
+
+
+def test_store_records_manifest_entry(clean_uploads):
+    contract_id, path, text = uploads.store("deal.txt", b"VENDOR: Acme\n")
+    manifest = uploads.read_manifest()
+    assert contract_id in manifest
+    assert manifest[contract_id]["original_filename"] == "deal.txt"
+    assert manifest[contract_id]["stored_filename"] == path.name
+    assert "Acme" in text
+
+
+def test_remove_deletes_file_and_manifest_entry(clean_uploads):
+    contract_id, path, _ = uploads.store("gone.txt", b"VENDOR: Acme\n")
+    assert uploads.remove(contract_id) is True
+    assert not path.exists()
+    assert contract_id not in uploads.read_manifest()
+
+
+def test_remove_unknown_id_returns_false(clean_uploads):
+    assert uploads.remove("U-9999") is False
