@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime
 
 from pydantic import BaseModel, create_model
 
@@ -185,6 +186,9 @@ def extract_one(contract_id: str, text: str) -> ExtractedContract:
     # acts when exactly one side is None), so this is what makes the
     # agentic path get the same treatment without double-deriving offline's.
     record.monthly_cost, record.annual_cost = reconcile_costs(record.monthly_cost, record.annual_cost)
+    # Same treatment, same reason: the model reads what the document states, and
+    # Python puts it into the one form every downstream consumer parses.
+    record.renewal_date = normalize_date(record.renewal_date)
 
     _cache_put(contract_id, text, record)
     return record
@@ -325,6 +329,36 @@ def _cache_put(contract_id: str, text: str, record: ExtractedContract) -> None:
     cache = load_cache()
     cache[cache_key(contract_id, text)] = record.model_dump(mode="json")
     save_cache(cache)
+
+
+# Formats a contract writes a date in, beyond ISO. Numeric forms like 09/30/2026
+# are deliberately absent: day-first and month-first are indistinguishable, and
+# a wrong renewal date is worse than an unparsed one.
+_DATE_FORMATS = ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%B %d, %Y", "%b %d, %Y",
+                 "%B %d %Y", "%d-%b-%Y", "%Y/%m/%d")
+
+
+def normalize_date(value: str) -> str:
+    """Put a date the model read into the ISO form the rest of the system parses.
+
+    A real contract says "expires on 30 September 2026", and the model reports
+    that faithfully - but renewal.run() parses end_date with %Y-%m-%d, so a
+    prose date raised ValueError and the contract dropped out of renewal risk
+    silently, behind a 200 response. That is one of only two findings an
+    uploaded contract can produce.
+
+    Conversion only, never inference: an unrecognized string is returned
+    untouched rather than guessed at, so a date we cannot read stays visibly
+    unread instead of becoming a confident-looking wrong one."""
+    text = (value or "").strip()
+    if not text:
+        return value
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return value
 
 
 def reconcile_costs(monthly: float | None, annual: float | None) -> tuple[float | None, float | None]:

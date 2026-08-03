@@ -1142,3 +1142,75 @@ def test_unique_path_docstring_matches_what_the_route_does():
     still both kept - by the rename, not by the suffix."""
     doc = uploads.unique_path.__doc__
     assert "rename" in doc.lower()
+
+
+# ---------------------------------------------------------------------------
+# A date the model read in prose still has to reach renewal risk
+# ---------------------------------------------------------------------------
+
+
+def test_normalize_date_passes_iso_through():
+    assert extraction.normalize_date("2026-09-30") == "2026-09-30"
+
+
+def test_normalize_date_reads_a_day_first_prose_date():
+    """Found end-to-end against a live model: a real contract says "expires on
+    30 September 2026", the model faithfully reports that string, and every
+    downstream consumer parses dates with %Y-%m-%d - so renewal.run() dropped
+    the contract on a ValueError and it vanished from renewal risk behind a
+    200 response."""
+    assert extraction.normalize_date("30 September 2026") == "2026-09-30"
+
+
+def test_normalize_date_reads_a_month_first_prose_date():
+    assert extraction.normalize_date("September 30, 2026") == "2026-09-30"
+
+
+def test_normalize_date_leaves_an_unparseable_string_alone():
+    """Never guess. An ambiguous or unreadable date is reported as the model
+    read it, not converted into a confident-looking wrong one."""
+    assert extraction.normalize_date("some time next autumn") == "some time next autumn"
+    assert extraction.normalize_date("09/30/2026") == "09/30/2026"
+    assert extraction.normalize_date("") == ""
+
+
+def test_extract_one_normalizes_a_prose_renewal_date(monkeypatch):
+    chunk = {"contract_id": "U-0001", "chunk_index": 0, "heading": "1. TERM",
+             "text": "The period expires on 30 September 2026.", "distance": 0.1}
+    monkeypatch.setattr(extraction, "chat_structured",
+                        lambda system, user, schema, agent="unknown":
+                        ContractTerms(renewal_date="30 September 2026"))
+    monkeypatch.setattr(extraction, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(extraction, "_retrieve", lambda cid, queries: [chunk])
+    monkeypatch.setattr(config, "EXTRACTION_CACHE_ENABLED", False)
+
+    record = extraction.extract_one("U-0001", "contract text")
+
+    assert record.renewal_date == "2026-09-30"
+
+
+def test_an_uploaded_contract_with_a_prose_date_reaches_renewal_risk(monkeypatch, clean_uploads):
+    """The whole point of normalizing: renewal risk is one of only two things
+    an uploaded contract can produce, and it is keyed off a parseable date."""
+    monkeypatch.setattr(config, "REFERENCE_DATE", "2026-08-03")
+    monkeypatch.setattr(extraction, "chat_structured",
+                        lambda system, user, schema, agent="unknown":
+                        ContractTerms(vendor="Helioscope Networks", auto_renew=True,
+                                      renewal_date="30 September 2026",
+                                      notice_period_days=60))
+    monkeypatch.setattr(extraction, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(extraction, "_retrieve",
+                        lambda cid, queries: [{"contract_id": cid, "chunk_index": 0,
+                                               "heading": "1. TERM",
+                                               "text": "Expires on 30 September 2026.",
+                                               "distance": 0.1}])
+    monkeypatch.setattr(config, "EXTRACTION_CACHE_ENABLED", False)
+
+    record = extraction.extract_one("U-0401", "contract text")
+    dataset_tools.upsert_upload_row(record)
+    try:
+        from app.agents import renewal
+        risks, _ = renewal.run()
+        assert any(r.contract_id == "U-0401" for r in risks)
+    finally:
+        dataset_tools.delete_upload_row("U-0401")
