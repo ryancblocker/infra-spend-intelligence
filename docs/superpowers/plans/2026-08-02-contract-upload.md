@@ -1207,6 +1207,13 @@ git commit -m "Add upload and remove routes"
 
 Run: `ls app/agents/ && grep -n "def run" app/agents/waste.py app/agents/benchmark.py`
 
+Signatures differ, and the tests must match them:
+- `waste.run() -> list[Finding]`
+- `benchmark.run() -> tuple[list[Finding], str]`
+- `renewal.run() -> tuple[list[RenewalRisk], str]`
+
+Only `waste.run()` returns a bare list. Unpack the other two.
+
 Both agents iterate contracts from `dataset_tools`. Uploaded rows have NULL utilization columns and no child assets, so they may already produce nothing — the test in Step 2 establishes which behavior is actual before any code changes.
 
 - [ ] **Step 2: Write the failing test**
@@ -1236,8 +1243,9 @@ def test_renewal_risk_includes_an_uploaded_contract(client):
         "/api/upload", files={"file": ("soon.txt", body, "text/plain")}
     ).json()["contract_id"]
 
+    # renewal.run() returns (risks, narrative) - unpack it, do not iterate the tuple.
     from app.agents import renewal
-    risks = renewal.run()
+    risks, _ = renewal.run()
     assert any(r.contract_id == contract_id for r in risks), (
         "end date, notice days and auto-renew are all stated in the document, so "
         "renewal risk must cover uploads"
