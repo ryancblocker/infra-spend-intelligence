@@ -162,9 +162,9 @@ def test_duplicate_filenames_both_persist(clean_uploads):
 def test_store_records_manifest_entry(clean_uploads):
     contract_id, path, text = uploads.store("deal.txt", b"VENDOR: Acme\n")
     manifest = uploads.read_manifest()
-    assert contract_id in manifest
-    assert manifest[contract_id]["original_filename"] == "deal.txt"
-    assert manifest[contract_id]["stored_filename"] == path.name
+    assert contract_id in manifest["entries"]
+    assert manifest["entries"][contract_id]["original_filename"] == "deal.txt"
+    assert manifest["entries"][contract_id]["stored_filename"] == path.name
     assert "Acme" in text
 
 
@@ -172,8 +172,88 @@ def test_remove_deletes_file_and_manifest_entry(clean_uploads):
     contract_id, path, _ = uploads.store("gone.txt", b"VENDOR: Acme\n")
     assert uploads.remove(contract_id) is True
     assert not path.exists()
-    assert contract_id not in uploads.read_manifest()
+    assert contract_id not in uploads.read_manifest()["entries"]
 
 
 def test_remove_unknown_id_returns_false(clean_uploads):
     assert uploads.remove("U-9999") is False
+
+
+# --- Coverage added after review: manifest durability, monotonic ids,
+# defensive parsing, null-byte filenames, and an end-to-end traversal check.
+
+
+def test_id_not_reused_after_removing_highest(clean_uploads):
+    first, _, _ = uploads.store("one.txt", b"VENDOR: One\n")
+    second, _, _ = uploads.store("two.txt", b"VENDOR: Two\n")
+    assert uploads.remove(second) is True
+    third, _, _ = uploads.store("three.txt", b"VENDOR: Three\n")
+    assert first == "U-0001"
+    assert second == "U-0002"
+    assert third == "U-0003"  # not U-0002 reissued
+
+
+def test_corrupt_manifest_raises_manifest_error(clean_uploads):
+    config.UPLOAD_MANIFEST_PATH.write_text("{not valid json", encoding="utf-8")
+    with pytest.raises(uploads.ManifestError):
+        uploads.read_manifest()
+
+
+def test_missing_manifest_file_is_not_an_error(clean_uploads):
+    assert not config.UPLOAD_MANIFEST_PATH.exists()
+    assert uploads.read_manifest() == {"next_id": 1, "entries": {}}
+
+
+def test_write_manifest_leaves_no_temp_file_behind(clean_uploads):
+    uploads.store("one.txt", b"VENDOR: Acme\n")
+    assert list(clean_uploads.glob(".manifest-*")) == []
+    assert config.UPLOAD_MANIFEST_PATH.exists()
+
+
+def test_write_manifest_is_atomic_on_failure(clean_uploads, monkeypatch):
+    uploads.store("one.txt", b"VENDOR: Acme\n")
+    original = uploads.read_manifest()
+
+    def boom(*args, **kwargs):
+        raise OSError("simulated crash mid-write")
+
+    monkeypatch.setattr(uploads.os, "replace", boom)
+    with pytest.raises(OSError):
+        uploads.write_manifest({"next_id": 999, "entries": {}})
+
+    # os.replace() never ran, so the on-disk manifest must be exactly what
+    # it was before the failed write - not truncated, not the new content.
+    assert uploads.read_manifest() == original
+    assert list(clean_uploads.glob(".manifest-*")) == []
+
+
+def test_remove_tolerates_entry_missing_stored_filename(clean_uploads):
+    contract_id, _, _ = uploads.store("weird.txt", b"VENDOR: Acme\n")
+    manifest = uploads.read_manifest()
+    del manifest["entries"][contract_id]["stored_filename"]
+    uploads.write_manifest(manifest)
+
+    assert uploads.remove(contract_id) is True
+    assert contract_id not in uploads.read_manifest()["entries"]
+
+
+def test_null_byte_in_filename_is_stripped(clean_uploads):
+    assert uploads.safe_basename("evil.txt\x00.pdf") == "evil.txt.pdf"
+
+
+def test_null_byte_in_filename_does_not_crash_store(clean_uploads):
+    contract_id, path, text = uploads.store("evil\x00.txt", b"VENDOR: Acme\n")
+    assert path.exists()
+    assert "Acme" in text
+
+
+def test_path_traversal_cannot_escape_upload_dir_end_to_end(clean_uploads):
+    """The unit-level safe_basename test proves the string is sanitized; this
+    proves the file that store() actually writes lands inside UPLOAD_DIR, not
+    just that the intermediate basename looks clean."""
+    contract_id, path, _ = uploads.store(
+        "../../etc/passwd.txt", b"VENDOR: Acme\n"
+    )
+    assert path.parent == config.UPLOAD_DIR
+    assert path.exists()
+    assert not (config.UPLOAD_DIR.parent / "etc" / "passwd.txt").exists()

@@ -37,6 +37,23 @@ App startup is safe (`app/main.py:64` only seeds when the DB is absent), but "yo
 
 This is an addition to the approved spec. It changes no user-visible behavior described there — it only makes Component 1 actually hold.
 
+**Amended during Task 2** after review found the manifest code below did not
+actually deliver the durability it claimed. Two rulings, both from Sofia:
+
+1. **Fail loud, write atomically.** As originally drafted, `read_manifest`
+   swallowed a corrupt file and returned `{}`, and the next `store()` wrote that
+   empty dict back over it — turning one transient corruption into permanent loss
+   of every upload record, with the `.txt` files left orphaned on disk. Writes now
+   go through a temp file plus `os.replace()`, and unparseable JSON raises
+   `ManifestError` instead of degrading to "nothing was ever uploaded." A missing
+   file still returns `{}`; that is the real "nothing uploaded yet" case.
+2. **Monotonic IDs.** `max(existing) + 1` reissued an id after the highest upload
+   was removed, so `U-0002` could name two different documents over time. The
+   manifest now carries a `next_id` counter that only increases.
+
+The Task 2 code blocks below predate both rulings; the committed implementation
+is the authority where they differ.
+
 ## File Structure
 
 | File | Responsibility |
