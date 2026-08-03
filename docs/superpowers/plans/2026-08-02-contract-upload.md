@@ -127,11 +127,10 @@ from app.tools.document_loader import UnsupportedDocument
 
 
 def _digital_pdf(text: str) -> bytes:
-    """A minimal one-page PDF with a real text object."""
-    from pypdf import PdfWriter
-    import io
+    """A minimal one-page PDF with a real text object.
 
-    # pypdf cannot author text content, so hand-build the smallest valid file.
+    Hand-built because pypdf can create pages but cannot author text content,
+    and this fixture's whole purpose is having extractable text."""
     content = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode("latin-1")
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -831,12 +830,13 @@ def test_seed_rows_are_marked_as_seed():
 
 
 def test_upsert_is_idempotent():
+    """Re-uploading the same id must replace the row, not accumulate duplicates."""
     dataset_tools.upsert_upload_row(_sample_record("U-0102"))
     dataset_tools.upsert_upload_row(_sample_record("U-0102"))
-    assert len(dataset_tools.fetch_upload_ids()) == len(
-        {cid for cid in dataset_tools.fetch_upload_ids()}
+    rows = dataset_tools._rows(
+        "SELECT contract_id FROM contracts WHERE contract_id = ?", ("U-0102",)
     )
-    assert dataset_tools.fetch_contract("U-0102") is not None
+    assert len(rows) == 1
     dataset_tools.delete_upload_row("U-0102")
 
 
