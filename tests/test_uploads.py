@@ -381,3 +381,74 @@ def test_document_path_returns_none_for_unknown_id(clean_uploads):
 def test_manifest_json_is_not_treated_as_a_document(clean_uploads):
     uploads.write_manifest({})
     assert all(p.suffix == ".txt" for p in config.document_paths())
+
+
+from app.data import seed_db
+from app.tools import dataset_tools
+
+
+def _sample_record(contract_id: str = "U-0001") -> ExtractedContract:
+    return ExtractedContract(
+        contract_id=contract_id,
+        vendor="Acme Corp",
+        category="Network Circuit Services",
+        renewal_date="2026-12-31",
+        notice_period_days=60,
+        auto_renew=True,
+        monthly_cost=1000.0,
+        annual_cost=12000.0,
+        minimum_commitment="10 circuits",
+    )
+
+
+def test_upsert_creates_a_row_marked_as_upload():
+    dataset_tools.upsert_upload_row(_sample_record("U-0101"))
+    row = dataset_tools.fetch_contract("U-0101")
+    assert row is not None
+    assert row["source"] == "upload"
+    assert row["vendor"] == "Acme Corp"
+    assert row["annual_cost"] == 12000.0
+    dataset_tools.delete_upload_row("U-0101")
+
+
+def test_seed_rows_are_marked_as_seed():
+    dataset_tools.ensure_source_column()
+    assert dataset_tools.fetch_contract("C-0001")["source"] == "seed"
+
+
+def test_upsert_is_idempotent():
+    """Re-uploading the same id must replace the row, not accumulate duplicates."""
+    dataset_tools.upsert_upload_row(_sample_record("U-0102"))
+    dataset_tools.upsert_upload_row(_sample_record("U-0102"))
+    rows = dataset_tools._rows(
+        "SELECT contract_id FROM contracts WHERE contract_id = ?", ("U-0102",)
+    )
+    assert len(rows) == 1
+    dataset_tools.delete_upload_row("U-0102")
+
+
+def test_delete_removes_the_row():
+    dataset_tools.upsert_upload_row(_sample_record("U-0103"))
+    dataset_tools.delete_upload_row("U-0103")
+    assert dataset_tools.fetch_contract("U-0103") is None
+
+
+def test_reseed_rehydrates_uploads_from_the_manifest(clean_uploads):
+    (clean_uploads / "U-0201.txt").write_text("VENDOR: Rehydrated Corp\n", encoding="utf-8")
+    uploads.write_manifest({
+        "next_id": 202,
+        "entries": {
+            "U-0201": {
+                "contract_id": "U-0201",
+                "original_filename": "deal.txt",
+                "stored_filename": "U-0201.txt",
+                "terms": _sample_record("U-0201").model_dump(mode="json"),
+            },
+        },
+    })
+
+    seed_db.build_database()
+
+    row = dataset_tools.fetch_contract("U-0201")
+    assert row is not None, "a reseed must not lose uploaded contracts"
+    assert row["source"] == "upload"

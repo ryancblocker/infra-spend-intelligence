@@ -95,3 +95,69 @@ def portfolio_totals() -> dict:
         "spend_by_category": {row["service_type"]: round(float(row["total"]), 2) for row in by_category},
         "asset_counts": counts,
     }
+
+
+# ---------------------------------------------------------------------------
+# Uploaded contracts
+# ---------------------------------------------------------------------------
+
+
+def ensure_source_column() -> None:
+    """Add contracts.source to databases created before uploads existed, so an
+    existing runtime/pact.db upgrades in place rather than needing a reseed."""
+    with connection() as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(contracts)")}
+        if "source" not in columns:
+            conn.execute("ALTER TABLE contracts ADD COLUMN source TEXT DEFAULT 'seed'")
+            conn.execute("UPDATE contracts SET source = 'seed' WHERE source IS NULL")
+            conn.commit()
+
+
+def upsert_upload_row(record) -> None:
+    """Insert or replace the contracts row derived from an uploaded document.
+
+    Only the columns an actual contract document can support are populated.
+    Utilization-derived columns stay NULL - see the waste agent, which reports
+    uploads as unavailable rather than inventing numbers for them."""
+    ensure_source_column()
+    with connection() as conn:
+        conn.execute("DELETE FROM contracts WHERE contract_id = ?", (record.contract_id,))
+        conn.execute(
+            """INSERT INTO contracts
+               (contract_id, vendor, service_type, start_date, end_date, annual_cost,
+                monthly_cost, auto_renew, notice_days, termination_fee_pct,
+                escalation_pct, owner, status, region, minimum_commitment, source)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'upload')""",
+            (
+                record.contract_id,
+                record.vendor or "Unknown vendor",
+                record.category or "Uploaded contract",
+                "",
+                record.renewal_date or "",
+                record.annual_cost,
+                record.monthly_cost,
+                "Yes" if record.auto_renew else "No",
+                record.notice_period_days,
+                record.termination_fee_pct,
+                record.annual_escalator_pct,
+                "Uploaded",
+                "Active",
+                "",
+                record.minimum_commitment or "",
+            ),
+        )
+        conn.commit()
+
+
+def delete_upload_row(contract_id: str) -> None:
+    with connection() as conn:
+        conn.execute(
+            "DELETE FROM contracts WHERE contract_id = ? AND source = 'upload'",
+            (contract_id,),
+        )
+        conn.commit()
+
+
+def fetch_upload_ids() -> set[str]:
+    ensure_source_column()
+    return {row["contract_id"] for row in _rows("SELECT contract_id FROM contracts WHERE source = 'upload'")}

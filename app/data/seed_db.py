@@ -44,7 +44,29 @@ def build_database() -> dict[str, int]:
         conn.commit()
     finally:
         conn.close()
+
+    _rehydrate_uploads()
     return counts
+
+
+def _rehydrate_uploads() -> int:
+    """Re-create contracts rows for uploaded documents.
+
+    build_database() deletes the database file outright, so uploaded rows cannot
+    survive a reseed on their own. runtime/uploads/manifest.json is the durable
+    record; this replays it. Returns the number of rows restored."""
+    from app.agents.schemas import ExtractedContract
+    from app.tools import dataset_tools, uploads
+
+    dataset_tools.ensure_source_column()
+    restored = 0
+    for entry in uploads.read_manifest()["entries"].values():
+        terms = entry.get("terms")
+        if not terms:
+            continue
+        dataset_tools.upsert_upload_row(ExtractedContract(**terms))
+        restored += 1
+    return restored
 
 
 def main() -> None:
