@@ -50,7 +50,7 @@ function pipelineRunner(completedDetails) {
   // frame. This spaces out *rendering* - every status and detail string shown is
   // the real one reported by the backend. With a local model attached, actual
   // latency exceeds this floor and it has no effect at all.
-  const MIN_DWELL_MS = 900;
+  const MIN_DWELL_MS = 550;
 
   // Details from a previous completed run, so the pipeline renders finished on a
   // fresh page load rather than resetting every node to grey.
@@ -130,7 +130,7 @@ function pipelineRunner(completedDetails) {
             // results. The reloaded page renders every node already complete
             // (details come from the server), so the pipeline stays green
             // instead of snapping back to grey.
-            setTimeout(() => { window.location.href = "/"; }, 1400);
+            setTimeout(() => { window.location.href = "/"; }, 900);
           }
           return;
         }
