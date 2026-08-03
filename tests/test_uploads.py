@@ -484,3 +484,68 @@ def test_delete_upload_row_self_heals_a_pre_source_column_table():
     with dataset_tools.connection() as conn:
         columns = {row[1] for row in conn.execute("PRAGMA table_info(contracts)")}
     assert "source" in columns
+
+
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture
+def client(clean_uploads, monkeypatch):
+    monkeypatch.setenv("PACT_LLM_MODE", "offline")
+    from app.main import app
+    return TestClient(app)
+
+
+def test_upload_txt_returns_a_contract_id(client):
+    body = b"VENDOR: Acme Corp\nCATEGORY: Network Circuit Services\n" \
+           b"This Agreement continues through 2026-12-31 and will automatically renew.\n"
+    response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["contract_id"] == "U-0001"
+    assert payload["vendor"] == "Acme Corp"
+
+
+def test_upload_creates_a_contracts_row(client):
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    contract_id = client.post(
+        "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
+    ).json()["contract_id"]
+    from app.tools import dataset_tools
+    assert dataset_tools.fetch_contract(contract_id)["source"] == "upload"
+
+
+def test_unsupported_extension_returns_415(client):
+    response = client.post("/api/upload", files={"file": ("deal.docx", b"x", "application/msword")})
+    assert response.status_code == 415
+    assert ".pdf" in response.json()["detail"]
+
+
+def test_oversized_upload_returns_413(client):
+    oversized = b"x" * (config.MAX_UPLOAD_BYTES + 1)
+    response = client.post("/api/upload", files={"file": ("big.txt", oversized, "text/plain")})
+    assert response.status_code == 413
+
+
+def test_scanned_pdf_upload_returns_422(client):
+    response = client.post("/api/upload", files={"file": ("scan.pdf", _scanned_pdf(), "application/pdf")})
+    assert response.status_code == 422
+    assert "OCR" in response.json()["detail"]
+
+
+def test_remove_deletes_row_and_file(client):
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    contract_id = client.post(
+        "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
+    ).json()["contract_id"]
+
+    response = client.post(f"/api/uploads/{contract_id}/remove")
+    assert response.status_code == 200
+
+    from app.tools import dataset_tools
+    assert dataset_tools.fetch_contract(contract_id) is None
+    assert contract_id not in uploads.read_manifest()["entries"]
+
+
+def test_remove_unknown_id_returns_404(client):
+    assert client.post("/api/uploads/U-9999/remove").status_code == 404

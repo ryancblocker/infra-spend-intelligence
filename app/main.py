@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi import FastAPI, File, HTTPException, UploadFile  # noqa: E402
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from fastapi.templating import Jinja2Templates  # noqa: E402
@@ -161,6 +161,61 @@ def api_reset():
     _LAST_NODE_DETAILS = {}
     persistence.clear_run()
     return {"ok": True, "has_run": False}
+
+
+@app.post("/api/upload")
+async def api_upload(file: UploadFile = File(...)):
+    """Accept a contract document, extract its terms, and register it as U-000N.
+
+    Extraction runs synchronously: the user should learn immediately whether we
+    could read their contract, not discover it during the next pipeline run."""
+    from app.agents import extraction
+    from app.tools import dataset_tools, uploads
+    from app.tools.document_loader import UnsupportedDocument
+    from app.tools.uploads import UploadTooLarge
+
+    data = await file.read()
+    try:
+        contract_id, path, text = uploads.store(file.filename or "upload", data)
+    except UploadTooLarge as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except UnsupportedDocument as exc:
+        status = 415 if "Unsupported file type" in exc.reason else 422
+        raise HTTPException(status_code=status, detail=exc.reason) from exc
+
+    # Name the stored file after the contract id so config.document_path can find it.
+    final_path = path.with_name(f"{contract_id}.txt")
+    path.rename(final_path)
+    manifest = uploads.read_manifest()
+    manifest["entries"][contract_id]["stored_filename"] = final_path.name
+
+    # extract_one already applies reconcile_costs internally (Task 3), so no
+    # second application is done here - that would just be a confusing no-op.
+    record = extraction.extract_one(contract_id, text)
+
+    manifest["entries"][contract_id]["terms"] = record.model_dump(mode="json")
+    uploads.write_manifest(manifest)
+    dataset_tools.upsert_upload_row(record)
+
+    return {
+        "contract_id": contract_id,
+        "vendor": record.vendor,
+        "renewal_date": record.renewal_date,
+        "extraction_source": record.extraction_source,
+        # The spec keeps a file whose LLM extraction returned nothing, falling back
+        # to regex - but says so, rather than presenting a guess as a reading.
+        "low_confidence": record.extraction_source == "offline" and bool(record.unresolved_fields),
+    }
+
+
+@app.post("/api/uploads/{contract_id}/remove")
+def api_upload_remove(contract_id: str):
+    from app.tools import dataset_tools, uploads
+
+    if not uploads.remove(contract_id):
+        raise HTTPException(status_code=404, detail=f"No uploaded contract {contract_id}.")
+    dataset_tools.delete_upload_row(contract_id)
+    return {"removed": True}
 
 
 @app.get("/", response_class=HTMLResponse)
