@@ -257,3 +257,48 @@ def test_path_traversal_cannot_escape_upload_dir_end_to_end(clean_uploads):
     assert path.parent == config.UPLOAD_DIR
     assert path.exists()
     assert not (config.UPLOAD_DIR.parent / "etc" / "passwd.txt").exists()
+
+
+from app.agents import extraction
+from app.agents.schemas import ContractTerms, ExtractedContract
+
+
+def test_contract_terms_has_cost_fields():
+    terms = ContractTerms(monthly_cost=1000.0, annual_cost=12000.0)
+    assert terms.monthly_cost == 1000.0
+    assert terms.annual_cost == 12000.0
+
+
+def test_cost_fields_default_to_none():
+    assert ContractTerms().monthly_cost is None
+    assert ExtractedContract(contract_id="U-0001").annual_cost is None
+
+
+def test_reconcile_costs_derives_annual_from_monthly():
+    assert extraction.reconcile_costs(1000.0, None) == (1000.0, 12000.0)
+
+
+def test_reconcile_costs_derives_monthly_from_annual():
+    assert extraction.reconcile_costs(None, 12000.0) == (1000.0, 12000.0)
+
+
+def test_reconcile_costs_keeps_both_when_stated():
+    assert extraction.reconcile_costs(1000.0, 11000.0) == (1000.0, 11000.0)
+
+
+def test_reconcile_costs_passes_through_nones():
+    assert extraction.reconcile_costs(None, None) == (None, None)
+
+
+def test_offline_extraction_reads_a_stated_monthly_fee():
+    text = "VENDOR: Acme Corp\nCustomer shall pay recurring fees of $9,936.97 per month.\n"
+    record = extraction._extract_offline("U-0001", text)
+    assert record.monthly_cost == 9936.97
+    assert record.annual_cost == pytest.approx(119243.64)
+
+
+def test_offline_extraction_reads_a_stated_annual_fee():
+    text = "VENDOR: Acme Corp\nTotal annual fees of $120,000.00 are due.\n"
+    record = extraction._extract_offline("U-0001", text)
+    assert record.annual_cost == 120000.0
+    assert record.monthly_cost == pytest.approx(10000.0)

@@ -296,6 +296,16 @@ def _cache_put(contract_id: str, text: str, record: ExtractedContract) -> None:
     save_cache(cache)
 
 
+def reconcile_costs(monthly: float | None, annual: float | None) -> tuple[float | None, float | None]:
+    """Fill in whichever figure the contract did not state. Arithmetic only -
+    the model is never asked to compute a number, just to read one."""
+    if monthly is not None and annual is None:
+        return monthly, round(monthly * 12, 2)
+    if annual is not None and monthly is None:
+        return round(annual / 12, 2), annual
+    return monthly, annual
+
+
 def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
     vendor = _search(text, r"VENDOR:\s*(.+)")
     category = _search(text, r"CATEGORY:\s*(.+)")
@@ -308,6 +318,9 @@ def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
     esc_match = re.search(r"Annual Escalator of (\d+(?:\.\d+)?)%", text, re.IGNORECASE)
     escalator_pct = float(esc_match.group(1)) if esc_match else None
     minimum_commitment = _search(text, r"covering (.+?)\.\s")
+    monthly_cost = _money(text, r"(?:recurring fees|monthly (?:fee|charge)s?)[^.$]*\$\s*([\d,]+(?:\.\d{2})?)")
+    annual_cost = _money(text, r"(?:annual|yearly)\s+(?:fees|cost|charges)[^.$]*\$\s*([\d,]+(?:\.\d{2})?)")
+    monthly_cost, annual_cost = reconcile_costs(monthly_cost, annual_cost)
     sla_summary = _search(text, r"Service Level Credits:\s*(.+)")
     liability_summary = _search(text, r"Limitation of Liability:\s*(.+)")
     has_mfn = "most favored pricing" in text.lower()
@@ -325,6 +338,8 @@ def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
         termination_fee_pct=termination_fee_pct,
         annual_escalator_pct=escalator_pct,
         minimum_commitment=minimum_commitment,
+        monthly_cost=monthly_cost,
+        annual_cost=annual_cost,
         sla_summary=sla_summary,
         liability_cap_summary=liability_summary,
         has_mfn_clause=has_mfn,
@@ -338,6 +353,16 @@ def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
 def _search(text: str, pattern: str) -> str:
     match = re.search(pattern, text, re.IGNORECASE)
     return match.group(1).strip() if match else ""
+
+
+def _money(text: str, pattern: str) -> float | None:
+    match = re.search(pattern, text, re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        return float(match.group(1).replace(",", ""))
+    except ValueError:
+        return None
 
 
 def _offline_risk(auto_renew: bool, notice_days: int | None, fee_pct: float | None,

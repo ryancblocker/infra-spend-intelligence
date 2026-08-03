@@ -40,6 +40,11 @@ class ContractTerms(BaseModel):
     termination_fee_pct: float | None = None
     annual_escalator_pct: float | None = None
     minimum_commitment: str = ""
+    # The contract states its price; reading a written-down number is extraction,
+    # not calculation. Every *derived* figure stays in Python - see
+    # extraction.reconcile_costs.
+    monthly_cost: float | None = None
+    annual_cost: float | None = None
     sla_summary: str = ""
     liability_cap_summary: str = ""
     has_mfn_clause: bool = False
@@ -64,6 +69,8 @@ class ExtractedContract(BaseModel):
     termination_fee_pct: float | None = None
     annual_escalator_pct: float | None = None
     minimum_commitment: str = ""
+    monthly_cost: float | None = None
+    annual_cost: float | None = None
     sla_summary: str = ""
     liability_cap_summary: str = ""
     has_mfn_clause: bool = False
