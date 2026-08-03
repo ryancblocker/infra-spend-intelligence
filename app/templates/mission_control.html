@@ -56,6 +56,35 @@
   </div>
 </div>
 
+<section class="card upload-card" style="margin-bottom:24px;">
+  <div class="section-title">Analyze Your Own Contract</div>
+  <p class="page-subtitle" style="margin-bottom:14px;">PDF or text, up to 10 MB. We extract clause terms and
+    renewal risk. Utilization findings need usage data a contract does not contain.</p>
+
+  <div id="upload-drop" class="upload-drop">
+    <input type="file" id="upload-input" accept=".pdf,.txt" hidden>
+    <button type="button" id="upload-browse" class="btn">Choose a file</button>
+    <span class="upload-hint">or drag it here</span>
+  </div>
+
+  <p id="upload-status" class="upload-status" role="status" aria-live="polite"></p>
+
+  {% if uploads %}
+  <ul id="upload-list" class="upload-list">
+    {% for item in uploads %}
+    <li data-contract-id="{{ item.contract_id }}">
+      <a href="/contracts/{{ item.contract_id }}">{{ item.contract_id }}</a>
+      <span class="upload-vendor">{{ item.terms.vendor if item.terms and item.terms.vendor else item.original_filename }}</span>
+      <span class="upload-renewal">{{ item.terms.renewal_date if item.terms and item.terms.renewal_date else "" }}</span>
+      <button type="button" class="btn btn-ghost btn-remove" data-remove="{{ item.contract_id }}">Remove</button>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div id="upload-list-empty" class="empty-state" style="padding:16px 0;">No contracts uploaded yet.</div>
+  {% endif %}
+</section>
+
 <div class="card" style="margin-bottom:24px;" x-data='pipelineRunner({{ node_details | default({}) | tojson }})'
      {% if autostart %}x-init="$nextTick(() => start())"{% endif %}>
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">

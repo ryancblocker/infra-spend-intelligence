@@ -92,7 +92,10 @@ def portfolio_totals() -> dict:
     return {
         "total_annual_spend": round(float(total_annual), 2),
         "total_monthly_spend": round(float(total_annual) / 12, 2),
-        "spend_by_category": {row["service_type"]: round(float(row["total"]), 2) for row in by_category},
+        # row["total"] can be NULL when every contract in that service_type group
+        # has no stated annual_cost - an uploaded contract whose document never
+        # names a fee is a real, expected case, not just a test artifact.
+        "spend_by_category": {row["service_type"]: round(float(row["total"] or 0), 2) for row in by_category},
         "asset_counts": counts,
     }
 

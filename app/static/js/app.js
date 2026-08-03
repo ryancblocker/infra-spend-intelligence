@@ -199,6 +199,102 @@ window.askChat = askChat;
 
 // --- simple client-side table filter ---
 
+// --- Contract upload ---------------------------------------------------------
+(function () {
+  const drop = document.getElementById("upload-drop");
+  if (!drop) return;
+  const input = document.getElementById("upload-input");
+  const status = document.getElementById("upload-status");
+
+  function wireRemove(button) {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.remove;
+      const response = await fetch(`/api/uploads/${id}/remove`, { method: "POST" });
+      if (response.ok) {
+        const row = button.closest("li");
+        const list = row.parentElement;
+        row.remove();
+        if (list && !list.children.length) list.remove();
+      }
+    });
+  }
+
+  document.querySelectorAll("[data-remove]").forEach(wireRemove);
+
+  document.getElementById("upload-browse").addEventListener("click", () => input.click());
+  input.addEventListener("change", () => {
+    if (input.files[0]) send(input.files[0]);
+    input.value = "";
+  });
+
+  ["dragover", "dragleave", "drop"].forEach((name) => {
+    drop.addEventListener(name, (event) => {
+      event.preventDefault();
+      drop.classList.toggle("is-over", name === "dragover");
+      if (name === "drop" && event.dataTransfer.files[0]) send(event.dataTransfer.files[0]);
+    });
+  });
+
+  function addRow(payload) {
+    let list = document.getElementById("upload-list");
+    if (!list) {
+      const empty = document.getElementById("upload-list-empty");
+      list = document.createElement("ul");
+      list.id = "upload-list";
+      list.className = "upload-list";
+      if (empty) {
+        empty.replaceWith(list);
+      } else {
+        status.insertAdjacentElement("afterend", list);
+      }
+    }
+    const li = document.createElement("li");
+    li.dataset.contractId = payload.contract_id;
+    const link = document.createElement("a");
+    link.href = `/contracts/${payload.contract_id}`;
+    link.textContent = payload.contract_id;
+    const vendor = document.createElement("span");
+    vendor.className = "upload-vendor";
+    vendor.textContent = payload.vendor || "";
+    const renewal = document.createElement("span");
+    renewal.className = "upload-renewal";
+    renewal.textContent = payload.renewal_date || "";
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn btn-ghost btn-remove";
+    remove.dataset.remove = payload.contract_id;
+    remove.textContent = "Remove";
+    li.append(link, vendor, renewal, remove);
+    list.appendChild(li);
+    wireRemove(remove);
+  }
+
+  async function send(file) {
+    status.textContent = `Reading ${file.name}...`;
+    status.className = "upload-status";
+    const body = new FormData();
+    body.append("file", file);
+    try {
+      const response = await fetch("/api/upload", { method: "POST", body });
+      const payload = await response.json();
+      if (!response.ok) {
+        // The API's detail names the actual cause - show it rather than "upload failed".
+        status.textContent = payload.detail || "Upload failed.";
+        status.classList.add("is-error");
+        return;
+      }
+      status.innerHTML = `Added <strong>${payload.contract_id}</strong>` +
+        `${payload.vendor ? ` - ${payload.vendor}` : ""}. ` +
+        `Re-run the analysis to include it.`;
+      status.classList.add("is-ok");
+      addRow(payload);
+    } catch (err) {
+      status.textContent = `Upload failed: ${err.message}`;
+      status.classList.add("is-error");
+    }
+  }
+})();
+
 function tableFilter() {
   return {
     query: "",

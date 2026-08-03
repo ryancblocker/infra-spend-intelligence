@@ -305,6 +305,24 @@ def api_upload_remove(contract_id: str):
     return {"removed": True}
 
 
+def _uploaded_contracts() -> list[dict]:
+    """Contracts uploaded via /api/upload, for the dashboard's upload card.
+
+    The manifest is written before extraction runs, so an entry may not have
+    a "terms" key yet - the template must tolerate that. A corrupt manifest
+    must not take down the whole dashboard either: every other figure on this
+    page is still valid, so this degrades to an empty list and logs, the same
+    policy seed_db._rehydrate_uploads() uses for a reseed."""
+    from app.tools import uploads
+
+    try:
+        entries = uploads.read_manifest()["entries"].values()
+    except uploads.ManifestError as exc:
+        print(f"[PACT] Upload list unavailable on dashboard - manifest is corrupt: {exc}")
+        return []
+    return sorted(entries, key=lambda e: e["contract_id"])
+
+
 @app.get("/", response_class=HTMLResponse)
 def mission_control(request: Request):
     # No redirect here. Bouncing / to /welcome whenever no run exists makes the
@@ -315,6 +333,7 @@ def mission_control(request: Request):
     ctx = _base_context(request)
     ctx["autostart"] = request.query_params.get("start") == "1"
     ctx["node_details"] = _LAST_NODE_DETAILS
+    ctx["uploads"] = _uploaded_contracts()
     ctx.update({
         "totals": totals,
         "findings": (list(_LAST_RUN.get("waste_findings", [])) + list(_LAST_RUN.get("benchmark_findings", [])))[:8],

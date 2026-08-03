@@ -737,6 +737,71 @@ def test_waste_ignores_uploads_even_with_an_empty_owner(client):
     )
 
 
+def test_mission_control_renders_upload_card(client):
+    """The dashboard's upload card must render even with nothing uploaded yet
+    - the drop zone and browse control are always present."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'id="upload-drop"' in response.text
+    assert 'id="upload-input"' in response.text
+    assert "Choose a file" in response.text
+
+
+def test_mission_control_lists_uploaded_contract(client):
+    """After a real upload, the dashboard's upload list must show the new
+    contract id and the vendor extracted from it."""
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    contract_id = client.post(
+        "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
+    ).json()["contract_id"]
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert contract_id in response.text
+    assert "Acme Corp" in response.text
+
+
+def test_mission_control_handles_entry_without_terms(client):
+    """The manifest is written before extraction runs, so an entry may not
+    have a "terms" key yet. The template must fall back to the original
+    filename rather than raising a Jinja UndefinedError."""
+    (uploads_dir := config.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+    uploads.write_manifest({
+        "next_id": 2,
+        "entries": {
+            "U-0001": {
+                "contract_id": "U-0001",
+                "original_filename": "pending-extraction.txt",
+                "stored_filename": "pending-extraction.txt",
+            },
+        },
+    })
+    (uploads_dir / "pending-extraction.txt").write_text("VENDOR: Acme\n", encoding="utf-8")
+
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "pending-extraction.txt" in response.text
+
+
+def test_mission_control_with_no_uploads_does_not_break(client):
+    """A fresh install with no manifest file at all must still render the
+    dashboard normally rather than raising."""
+    assert not config.UPLOAD_MANIFEST_PATH.exists()
+    response = client.get("/")
+    assert response.status_code == 200
+
+
+def test_mission_control_degrades_on_corrupt_manifest(client):
+    """A corrupt manifest must not take down the whole dashboard - every
+    other figure on the page (KPIs, pipeline, etc.) is still valid, so this
+    should degrade to an empty upload list rather than 500."""
+    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    config.UPLOAD_MANIFEST_PATH.write_text("{not valid json", encoding="utf-8")
+
+    response = client.get("/")
+    assert response.status_code == 200
+
+
 def test_renewal_risk_includes_an_uploaded_contract(client):
     body = (b"VENDOR: Acme Corp\nThis Agreement continues through 2026-09-30 and will "
             b"automatically renew unless either party gives notice of non-renewal at "
