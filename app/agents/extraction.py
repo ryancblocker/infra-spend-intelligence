@@ -241,7 +241,12 @@ def _extract_agentic(contract_id: str, text: str) -> ExtractedContract:
         # the model never produced anything usable - degrade, don't guess
         record = _with_offline_citations(contract_id, text)
         record.extraction_iterations = iterations or 1
-        record.injection_flags = sorted(set(injection_flags))
+        # Union, not replace: _with_offline_citations scanned the whole
+        # document, while injection_flags only holds what the retrieved chunks
+        # contained. Overwriting dropped every marker sitting in a clause the
+        # loop never retrieved - which is most of them, and always all of them
+        # when retrieval returned nothing at all.
+        record.injection_flags = sorted(set(injection_flags) | set(record.injection_flags))
         record.retrieval_queries = queries_issued
         return record
 
