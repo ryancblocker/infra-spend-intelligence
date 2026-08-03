@@ -8,6 +8,8 @@ operators at all is exactly what a scan produces.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app import config
@@ -800,6 +802,37 @@ def test_mission_control_degrades_on_corrupt_manifest(client):
 
     response = client.get("/")
     assert response.status_code == 200
+
+
+def test_upload_status_message_is_never_built_via_innerhtml():
+    """Regression test for an XSS found in code review: the post-upload status
+    message used to be built with
+
+        status.innerHTML = `Added <strong>${payload.contract_id}</strong>` +
+            `${payload.vendor ? ` - ${payload.vendor}` : ""}. ...`
+
+    payload.vendor is a raw regex capture off the uploaded document's own
+    text (extraction.py's "VENDOR:" search) with no sanitization anywhere
+    between there and this line. A .txt file containing
+    "VENDOR: <img src=x onerror=alert(1)>" would execute script in the
+    uploader's page the instant the upload succeeded.
+
+    This can't be exercised through a real browser here (no DOM/JS engine
+    available to this suite), so it's pinned at the source level instead:
+    a crude but effective regex over app.js asserting no `.innerHTML`
+    assignment interpolates `${payload...}`. The fixed code builds the
+    message with createElement/textContent/Node.append (a string passed to
+    append() becomes a Text node, never parsed as markup), which this
+    pattern does not flag.
+    """
+    js = (config.STATIC_DIR / "js" / "app.js").read_text(encoding="utf-8")
+    dangerous = re.search(r"innerHTML\s*=[^;]*\$\{\s*payload", js, re.DOTALL)
+    assert dangerous is None, (
+        "found an innerHTML assignment interpolating payload-derived data - "
+        "user-supplied upload content (vendor, filename, API error detail) "
+        "must only ever be set via textContent/createElement/append, never "
+        "written into innerHTML unescaped"
+    )
 
 
 def test_renewal_risk_includes_an_uploaded_contract(client):

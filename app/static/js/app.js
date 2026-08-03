@@ -283,9 +283,18 @@ window.askChat = askChat;
         status.classList.add("is-error");
         return;
       }
-      status.innerHTML = `Added <strong>${payload.contract_id}</strong>` +
-        `${payload.vendor ? ` - ${payload.vendor}` : ""}. ` +
-        `Re-run the analysis to include it.`;
+      // Built with createElement/textContent, not innerHTML: payload.vendor is a
+      // raw regex capture off the uploaded document's own text (see
+      // extraction.py's VENDOR: search), completely unsanitized by the time it
+      // reaches here. A file containing e.g. "VENDOR: <img src=x onerror=...>"
+      // must render as inert text, never as markup the browser executes.
+      status.textContent = "";
+      status.append("Added ");
+      const idEl = document.createElement("strong");
+      idEl.textContent = payload.contract_id;
+      status.append(idEl);
+      if (payload.vendor) status.append(` - ${payload.vendor}`);
+      status.append(". Re-run the analysis to include it.");
       status.classList.add("is-ok");
       addRow(payload);
     } catch (err) {
