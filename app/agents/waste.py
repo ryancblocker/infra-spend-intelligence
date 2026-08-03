@@ -20,11 +20,20 @@ def run() -> list[Finding]:
     seq = FindingIdSequence("W")
     findings: list[Finding] = []
 
+    # Uploaded contracts carry no utilization telemetry - no seat counts, port
+    # usage, or rack occupancy - so a waste finding for one would be invented,
+    # not measured. The honest result is no finding at all, never a hygiene
+    # finding (e.g. contract_owner_gap) standing in for the missing one. This
+    # must not depend on incidental values other columns happen to hold (e.g.
+    # upsert_upload_row's owner placeholder) - hence the explicit id check
+    # below rather than relying on a placeholder string being non-empty.
+    upload_ids = dataset_tools.fetch_upload_ids()
+
     findings.extend(_circuit_underutilization(seq))
     findings.extend(_colo_underutilization(seq))
     findings.extend(_mobile_issues(seq))
     findings.extend(_license_underutilization(seq))
-    findings.extend(_owner_gaps(seq))
+    findings.extend(_owner_gaps(seq, upload_ids))
 
     return findings
 
@@ -101,7 +110,7 @@ def _license_underutilization(seq: FindingIdSequence) -> list[Finding]:
     return out
 
 
-def _owner_gaps(seq: FindingIdSequence) -> list[Finding]:
+def _owner_gaps(seq: FindingIdSequence, upload_ids: set[str]) -> list[Finding]:
     out = []
     specs = [
         (dataset_tools.fetch_contracts(), "contract_id", "contract_owner_gap", "Contract missing owner."),
@@ -112,6 +121,13 @@ def _owner_gaps(seq: FindingIdSequence) -> list[Finding]:
     ]
     for rows, id_col, category, message in specs:
         for row in rows:
+            # An uploaded contract's row is deliberately given owner="Uploaded"
+            # as a placeholder, but that string's truthiness is not what should
+            # keep this check quiet - a future edit that blanks it out must not
+            # resurrect a contract_owner_gap finding for a document that never
+            # had utilization telemetry to begin with. Skip by id instead.
+            if row.get("contract_id", row.get(id_col, "")) in upload_ids:
+                continue
             if str(row.get("owner") or "").strip():
                 continue
             monthly = float(row.get("monthly_cost", row.get("annual_cost", 0) or 0) or 0)

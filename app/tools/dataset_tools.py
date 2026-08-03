@@ -118,7 +118,14 @@ def upsert_upload_row(record) -> None:
 
     Only the columns an actual contract document can support are populated.
     Utilization-derived columns stay NULL - see the waste agent, which reports
-    uploads as unavailable rather than inventing numbers for them."""
+    uploads as unavailable rather than inventing numbers for them.
+
+    owner is set to the "Uploaded" placeholder below purely so list/detail
+    views have something to display - it is not load-bearing for correctness.
+    waste.py skips uploaded contracts by contract_id (via fetch_upload_ids()),
+    not by checking whether owner is non-empty, so blanking or removing this
+    placeholder later will not resurrect a fabricated contract_owner_gap
+    finding for a document that never had utilization telemetry."""
     ensure_source_column()
     with connection() as conn:
         conn.execute("DELETE FROM contracts WHERE contract_id = ?", (record.contract_id,))

@@ -712,6 +712,31 @@ def test_waste_produces_no_findings_for_an_uploaded_contract(client):
     )
 
 
+def test_waste_ignores_uploads_even_with_an_empty_owner(client):
+    """The 'no waste findings for uploads' guarantee must not rest on
+    upsert_upload_row's incidental choice of owner="Uploaded" as a placeholder
+    string. If a future edit blanks that placeholder out, the upload-id guard
+    in waste.py - not the string's truthiness - must still be what keeps
+    contract_owner_gap (or any other waste finding) from firing."""
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    contract_id = client.post(
+        "/api/upload", files={"file": ("deal.txt", body, "text/plain")}
+    ).json()["contract_id"]
+
+    from app.tools import dataset_tools
+    with dataset_tools.connection() as conn:
+        conn.execute("UPDATE contracts SET owner = '' WHERE contract_id = ?", (contract_id,))
+        conn.commit()
+
+    from app.agents import waste
+    findings = waste.run()
+    assert not [f for f in findings if f.contract_id == contract_id], (
+        "an uploaded contract must produce zero waste findings regardless of its "
+        "owner field - the guard is contract_id in fetch_upload_ids(), not "
+        "whether some other column happens to be non-empty"
+    )
+
+
 def test_renewal_risk_includes_an_uploaded_contract(client):
     body = (b"VENDOR: Acme Corp\nThis Agreement continues through 2026-09-30 and will "
             b"automatically renew unless either party gives notice of non-renewal at "
