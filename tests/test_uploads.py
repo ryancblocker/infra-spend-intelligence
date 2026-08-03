@@ -452,3 +452,35 @@ def test_reseed_rehydrates_uploads_from_the_manifest(clean_uploads):
     row = dataset_tools.fetch_contract("U-0201")
     assert row is not None, "a reseed must not lose uploaded contracts"
     assert row["source"] == "upload"
+
+
+def test_corrupt_manifest_does_not_break_a_reseed(clean_uploads, capsys):
+    """Rehydration reads the manifest but never writes it, so a corrupt manifest
+    at startup/reseed time must degrade (skip rehydration, warn loudly) rather
+    than crash build_database() - which would take down the whole app/test
+    suite over a problem that store()/remove() would still report loudly the
+    moment someone actually tries to upload."""
+    clean_uploads.joinpath("manifest.json").write_text("{not valid json", encoding="utf-8")
+
+    counts = seed_db.build_database()
+
+    assert counts, "build_database() must still complete and return table counts"
+    captured = capsys.readouterr()
+    assert "[PACT]" in captured.out
+    assert "manifest" in captured.out.lower()
+
+
+def test_delete_upload_row_self_heals_a_pre_source_column_table():
+    """ensure_source_column, upsert_upload_row, and fetch_upload_ids all guard
+    against a contracts table that predates the source column (e.g. right
+    after a reseed builds it straight from CSV). delete_upload_row must too,
+    instead of raising OperationalError: no such column: source."""
+    with dataset_tools.connection() as conn:
+        conn.execute("ALTER TABLE contracts DROP COLUMN source")
+        conn.commit()
+
+    dataset_tools.delete_upload_row("U-9999")  # must not raise
+
+    with dataset_tools.connection() as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(contracts)")}
+    assert "source" in columns

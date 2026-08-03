@@ -59,8 +59,17 @@ def _rehydrate_uploads() -> int:
     from app.tools import dataset_tools, uploads
 
     dataset_tools.ensure_source_column()
+    try:
+        entries = uploads.read_manifest()["entries"].values()
+    except uploads.ManifestError as exc:
+        print(
+            f"[PACT] Skipping upload rehydration - manifest at "
+            f"{config.UPLOAD_MANIFEST_PATH} is corrupt: {exc}"
+        )
+        return 0
+
     restored = 0
-    for entry in uploads.read_manifest()["entries"].values():
+    for entry in entries:
         terms = entry.get("terms")
         if not terms:
             continue

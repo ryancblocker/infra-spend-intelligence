@@ -150,6 +150,7 @@ def upsert_upload_row(record) -> None:
 
 
 def delete_upload_row(contract_id: str) -> None:
+    ensure_source_column()
     with connection() as conn:
         conn.execute(
             "DELETE FROM contracts WHERE contract_id = ? AND source = 'upload'",
