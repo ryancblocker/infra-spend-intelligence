@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, HTTPException  # noqa: E402
-from fastapi.responses import HTMLResponse, StreamingResponse  # noqa: E402
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from fastapi.templating import Jinja2Templates  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
@@ -58,9 +58,12 @@ def on_startup() -> None:
         except Exception as exc:
             print(f"[PACT] Vector index build skipped: {exc}")
 
-    loaded = persistence.load_run()
-    if loaded:
-        _LAST_RUN = loaded
+    if config.FRESH_START:
+        print("[PACT] PACT_FRESH_START=1 - starting with no prior run loaded.")
+    else:
+        loaded = persistence.load_run()
+        if loaded:
+            _LAST_RUN = loaded
 
 
 def _base_context(request: Request) -> dict:
@@ -77,10 +80,63 @@ def _base_context(request: Request) -> dict:
 # ---------------------------------------------------------------------------
 
 
+AGENT_PREVIEW = [
+    ("Discovery", "Aggregates total spend and asset counts across the portfolio."),
+    ("Contract Extraction", "Reads contract prose and pulls out renewal terms, fees, SLAs and "
+                            "liability caps - retrieving clauses, checking its own gaps, and "
+                            "querying again for whatever it is still missing."),
+    ("Waste Detection", "Flags underutilized circuits, colocation and licenses, plus unassigned "
+                        "or inactive mobile lines."),
+    ("Benchmark Analysis", "Compares every rate against 2026 market benchmarks."),
+    ("Renewal Intelligence", "Scores renewal risk against notice-period deadlines."),
+    ("Optimization Strategy", "Recommends keep, cancel or renegotiate. Dollar figures are computed "
+                              "deterministically; the model only supplies judgement."),
+    ("Critic Review", "Checks the recommendations against the underlying numbers and sends "
+                      "anything that does not hold up back to be redone."),
+    ("Executive Narrator", "Synthesizes everything into an executive summary."),
+]
+
+
+@app.get("/welcome", response_class=HTMLResponse)
+def welcome(request: Request):
+    """Permanent explainer that doubles as the first-run entry point."""
+    try:
+        totals = dataset_tools.portfolio_totals()
+    except Exception:
+        totals = {"total_annual_spend": 0, "total_monthly_spend": 0,
+                  "spend_by_category": {}, "asset_counts": {}}
+    try:
+        doc_count = len(list(config.CONTRACT_DOCS_DIR.glob("*.txt")))
+    except Exception:
+        doc_count = 0
+
+    ctx = _base_context(request)
+    ctx.update({"totals": totals, "doc_count": doc_count, "agents": AGENT_PREVIEW})
+    return templates.TemplateResponse(request, "welcome.html", ctx)
+
+
+@app.post("/api/reset")
+def api_reset():
+    """Clear the current run so the demo can be replayed from zero. Idempotent."""
+    global _LAST_RUN
+    _LAST_RUN = {}
+    persistence.clear_run()
+    return {"ok": True, "has_run": False}
+
+
 @app.get("/", response_class=HTMLResponse)
 def mission_control(request: Request):
+    # Nothing to show until the pipeline has run - send first-time visitors to
+    # the explainer rather than a grid of empty cards. `?start=1` is how the
+    # welcome page hands off, so it must bypass the redirect or the two pages
+    # bounce off each other.
+    autostart = request.query_params.get("start") == "1"
+    if not _LAST_RUN and not autostart:
+        return RedirectResponse(url="/welcome", status_code=307)
+
     totals = dataset_tools.portfolio_totals()
     ctx = _base_context(request)
+    ctx["autostart"] = autostart
     ctx.update({
         "totals": totals,
         "findings": (list(_LAST_RUN.get("waste_findings", [])) + list(_LAST_RUN.get("benchmark_findings", [])))[:8],

@@ -32,7 +32,8 @@
   </div>
 </div>
 
-<div class="card" style="margin-bottom:24px;" x-data="pipelineRunner()">
+<div class="card" style="margin-bottom:24px;" x-data="pipelineRunner()"
+     {% if autostart %}x-init="$nextTick(() => start())"{% endif %}>
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
     <div class="section-title" style="margin:0;">Agent Pipeline</div>
     <button class="btn btn-primary" @click="start()" :disabled="running">

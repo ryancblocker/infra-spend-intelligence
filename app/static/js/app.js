@@ -44,45 +44,84 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function pipelineRunner() {
   const nodeOrder = ["discovery", "extraction", "waste", "benchmark", "renewal", "optimization", "critic", "narrator"];
+
+  // Render-pacing floor only. The offline pipeline completes in ~0.02s, which is
+  // faster than a human can perceive, so state changes would land in a single
+  // frame. This spaces out *rendering* - every status and detail string shown is
+  // the real one reported by the backend. With a local model attached, actual
+  // latency exceeds this floor and it has no effect at all.
+  const MIN_DWELL_MS = 400;
+
   return {
     running: false,
     nodes: nodeOrder.map((id) => ({ id, status: "pending", detail: "" })),
     log: [],
+    _queue: [],
+    _draining: false,
+    _finished: false,
+
     start() {
       if (this.running) return;
       this.running = true;
       this.nodes.forEach((n) => { n.status = "pending"; n.detail = ""; });
       this.log = [];
+      this._queue = [];
+      this._finished = false;
 
       const source = new EventSource("/api/run");
       source.onmessage = (evt) => {
-        const data = JSON.parse(evt.data);
-        const node = this.nodes.find((n) => n.id === data.node);
-        if (node) {
-          node.status = "done";
-          node.detail = data.detail;
-        }
-        this.log.unshift(`${data.label}: ${data.detail}`);
+        this._queue.push(JSON.parse(evt.data));
+        this._drain();
       };
       source.addEventListener("result", () => {
         source.close();
-        this.running = false;
-        window.location.reload();
+        this._finished = true;
+        this._drain();
       });
       source.onerror = () => {
         source.close();
         this.running = false;
       };
+    },
 
-      // Mark the first not-yet-done node as "running" once its predecessors finish.
-      this._pulseInterval = setInterval(() => {
-        let seenPending = false;
-        for (const n of this.nodes) {
-          if (n.status === "done") continue;
-          if (!seenPending) { n.status = this.running ? "running" : n.status; seenPending = true; }
+    _drain() {
+      if (this._draining) return;
+      this._draining = true;
+      const step = () => {
+        const data = this._queue.shift();
+        if (!data) {
+          this._draining = false;
+          if (this._finished) {
+            this.running = false;
+            // Navigate rather than reload: reloading would preserve ?start=1
+            // and immediately kick off another run.
+            window.location.href = "/";
+          }
+          return;
         }
-        if (!this.running) clearInterval(this._pulseInterval);
-      }, 200);
+        this._apply(data);
+        setTimeout(step, MIN_DWELL_MS);
+      };
+      step();
+    },
+
+    _apply(data) {
+      const node = this.nodes.find((n) => n.id === data.node);
+      if (node) {
+        if (data.status === "started") {
+          node.status = "running";
+        } else if (data.status === "error") {
+          node.status = "error";
+          node.detail = data.detail;
+        } else {
+          node.status = "done";
+          node.detail = data.detail;
+        }
+      }
+      // "started" carries no result yet, so it would only add noise to the feed.
+      if (data.status !== "started") {
+        this.log.unshift(`${data.label}: ${data.detail}`);
+      }
     },
   };
 }

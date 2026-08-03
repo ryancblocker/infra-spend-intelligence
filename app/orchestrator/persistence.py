@@ -52,6 +52,14 @@ def save_run(state: PipelineState) -> None:
     RUN_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+def clear_run() -> None:
+    """Delete the persisted run. Idempotent - a missing file is not an error."""
+    try:
+        RUN_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def load_run() -> PipelineState | None:
     if not RUN_FILE.exists():
         return None

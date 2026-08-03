@@ -66,6 +66,12 @@ LLM_LOG_PATH = RUNTIME_DIR / "llm_calls.jsonl"
 EXTRACTION_CACHE_PATH = RUNTIME_DIR / "extraction_cache.json"
 EXTRACTION_CACHE_ENABLED = os.environ.get("PACT_EXTRACTION_CACHE", "1") != "0"
 
+# Skip restoring a persisted run at startup, so the app opens on the welcome
+# screen with nothing calculated. Persistence itself stays on - this only
+# controls whether a previous run is loaded back in. Useful for demoing the
+# full arc from zero.
+FRESH_START = os.environ.get("PACT_FRESH_START", "0") == "1"
+
 
 def ensure_runtime_dirs() -> None:
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)

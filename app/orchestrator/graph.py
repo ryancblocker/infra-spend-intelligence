@@ -93,16 +93,35 @@ def narrator_node(state: PipelineState) -> dict:
     return {"summary": summary}
 
 
+# graph.stream(stream_mode="updates") only yields *after* a node finishes, so a
+# "started" event cannot be derived from the stream. Each node is wrapped to emit
+# it at the moment the node actually begins. The queue is held module-level
+# because LangGraph runs parallel branches in worker threads and does not thread
+# caller state through; one pipeline runs at a time (the SSE endpoint is the only
+# caller), so a single slot is sufficient.
+_ACTIVE_QUEUE: "queue_module.Queue | None" = None
+
+
+def _announce(node_name: str, fn):
+    """Wrap a node so it reports that it has started working."""
+    def wrapped(state: PipelineState) -> dict:
+        emit(_ACTIVE_QUEUE, node_name, "started")
+        return fn(state)
+
+    wrapped.__name__ = getattr(fn, "__name__", node_name)
+    return wrapped
+
+
 def build_graph():
     graph = StateGraph(PipelineState)
-    graph.add_node("discovery", discovery_node)
-    graph.add_node("extraction", extraction_node)
-    graph.add_node("waste", waste_node)
-    graph.add_node("benchmark", benchmark_node)
-    graph.add_node("renewal", renewal_node)
-    graph.add_node("optimization", optimization_node)
-    graph.add_node("critic", critic_node)
-    graph.add_node("narrator", narrator_node)
+    graph.add_node("discovery", _announce("discovery", discovery_node))
+    graph.add_node("extraction", _announce("extraction", extraction_node))
+    graph.add_node("waste", _announce("waste", waste_node))
+    graph.add_node("benchmark", _announce("benchmark", benchmark_node))
+    graph.add_node("renewal", _announce("renewal", renewal_node))
+    graph.add_node("optimization", _announce("optimization", optimization_node))
+    graph.add_node("critic", _announce("critic", critic_node))
+    graph.add_node("narrator", _announce("narrator", narrator_node))
 
     graph.add_edge(START, "discovery")
     for worker in ("extraction", "waste", "benchmark", "renewal"):
@@ -155,13 +174,16 @@ def run_pipeline(event_queue: "queue_module.Queue | None" = None) -> PipelineSta
     """Synchronous full pipeline run. Call via asyncio.to_thread() from async
     callers (e.g. the FastAPI SSE route) so the event loop isn't blocked
     during LLM calls."""
+    global _ACTIVE_QUEUE
     graph = get_graph()
     final_state: PipelineState = {}
+    _ACTIVE_QUEUE = event_queue
     try:
         for chunk in graph.stream({}, stream_mode="updates"):
             for node_name, node_output in chunk.items():
                 final_state.update(node_output)
                 emit(event_queue, node_name, "completed", _detail_for(node_name, node_output))
     finally:
+        _ACTIVE_QUEUE = None
         emit_done(event_queue)
     return final_state
