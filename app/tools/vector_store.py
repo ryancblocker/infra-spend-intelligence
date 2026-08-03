@@ -64,14 +64,14 @@ def _client():
 
 
 def build_index() -> int:
-    """(Re)build the contract-document vector index from app/data/contract_docs/."""
+    """(Re)build the contract-document vector index from the seed corpus and uploads."""
     client = _client()
     existing = {c.name for c in client.list_collections()}
     if COLLECTION_NAME in existing:
         client.delete_collection(COLLECTION_NAME)
     collection = client.create_collection(COLLECTION_NAME, metadata={"hnsw:space": VECTOR_SPACE})
 
-    doc_paths = sorted(config.CONTRACT_DOCS_DIR.glob("*.txt"))
+    doc_paths = config.document_paths()
     if not doc_paths:
         return 0
 

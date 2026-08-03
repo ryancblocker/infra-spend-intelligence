@@ -91,3 +91,20 @@ def ensure_runtime_dirs() -> None:
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
     VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def document_paths() -> list[Path]:
+    """Every contract document the agents can read: the git-tracked seed corpus
+    plus anything the user uploaded. One helper so extraction, the vector index,
+    and the detail view can never drift out of sync about where documents live."""
+    seed = sorted(CONTRACT_DOCS_DIR.glob("*.txt"))
+    uploaded = sorted(UPLOAD_DIR.glob("*.txt")) if UPLOAD_DIR.exists() else []
+    return seed + uploaded
+
+
+def document_path(contract_id: str) -> Path | None:
+    for directory in (CONTRACT_DOCS_DIR, UPLOAD_DIR):
+        candidate = directory / f"{contract_id}.txt"
+        if candidate.exists():
+            return candidate
+    return None

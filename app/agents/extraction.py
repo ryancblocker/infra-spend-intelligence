@@ -68,7 +68,7 @@ BOOLEAN_FIELDS = {"auto_renew", "has_mfn_clause", "has_price_protection_clause"}
 
 def run() -> list[ExtractedContract]:
     results = []
-    for path in sorted(config.CONTRACT_DOCS_DIR.glob("*.txt")):
+    for path in config.document_paths():
         results.append(extract_one(path.stem, path.read_text(encoding="utf-8")))
     return results
 

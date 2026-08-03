@@ -358,3 +358,26 @@ def test_agentic_path_also_derives_the_missing_cost_figure(monkeypatch):
 
     assert record.monthly_cost == 1000.0
     assert record.annual_cost == pytest.approx(12000.0)
+
+
+def test_document_paths_includes_seed_and_upload_dirs(clean_uploads):
+    (clean_uploads / "U-0001.txt").write_text("VENDOR: Acme\n", encoding="utf-8")
+    paths = config.document_paths()
+    names = {p.name for p in paths}
+    assert "U-0001.txt" in names
+    assert any(p.parent == config.CONTRACT_DOCS_DIR for p in paths)
+
+
+def test_document_path_resolves_an_upload(clean_uploads):
+    (clean_uploads / "U-0001.txt").write_text("VENDOR: Acme\n", encoding="utf-8")
+    resolved = config.document_path("U-0001")
+    assert resolved is not None and resolved.name == "U-0001.txt"
+
+
+def test_document_path_returns_none_for_unknown_id(clean_uploads):
+    assert config.document_path("U-9999") is None
+
+
+def test_manifest_json_is_not_treated_as_a_document(clean_uploads):
+    uploads.write_manifest({})
+    assert all(p.suffix == ".txt" for p in config.document_paths())
