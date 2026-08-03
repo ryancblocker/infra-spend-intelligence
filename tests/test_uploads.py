@@ -1053,3 +1053,71 @@ def test_empty_txt_upload_returns_422(client):
     response = client.post("/api/upload", files={"file": ("empty.txt", b"  \n ", "text/plain")})
     assert response.status_code == 422
     assert response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Low confidence has to mean something, and has to be visible
+# ---------------------------------------------------------------------------
+
+READABLE_CONTRACT = ("VENDOR: Acme Corp", "CATEGORY: Network Circuit Services",
+                     "This Agreement continues through 2026-12-31 and will "
+                     "automatically renew.")
+
+
+def test_low_confidence_is_false_when_the_load_bearing_fields_were_read(client):
+    """The old rule - offline source plus any unresolved field - was true for
+    virtually every upload, because a False boolean counts as unresolved. A
+    flag that is always on tells the user nothing."""
+    payload = client.post(
+        "/api/upload", files={"file": ("deal.txt", _txt(*READABLE_CONTRACT), "text/plain")}
+    ).json()
+    assert payload["vendor"] == "Acme Corp"
+    assert payload["renewal_date"] == "2026-12-31"
+    assert payload["low_confidence"] is False
+
+
+def test_low_confidence_is_true_when_the_document_could_not_be_read(client):
+    """Vendor and renewal date are the load-bearing fields: without them there
+    is no contract to show and no renewal risk to compute, so the reading has
+    to be flagged rather than presented as a result."""
+    payload = client.post(
+        "/api/upload",
+        files={"file": ("realistic.txt", REALISTIC_CONTRACT.encode("utf-8"), "text/plain")},
+    ).json()
+    assert payload["low_confidence"] is True
+
+
+def test_low_confidence_is_true_when_only_the_vendor_was_read(client):
+    payload = client.post(
+        "/api/upload", files={"file": ("half.txt", _txt("VENDOR: Acme Corp"), "text/plain")}
+    ).json()
+    assert payload["vendor"] == "Acme Corp"
+    assert not payload["renewal_date"]
+    assert payload["low_confidence"] is True
+
+
+def test_mission_control_flags_a_low_confidence_upload(client):
+    """The spec requires a degraded extraction to be flagged, so a user can tell
+    "we read your contract" from "we read nothing". It was computed and returned
+    but rendered nowhere."""
+    client.post("/api/upload",
+                files={"file": ("realistic.txt", REALISTIC_CONTRACT.encode("utf-8"), "text/plain")})
+    body = client.get("/").text
+    assert "could read very little" in body
+    assert "may be incomplete" in body
+
+
+def test_mission_control_does_not_flag_a_readable_upload(client):
+    client.post("/api/upload", files={"file": ("deal.txt", _txt(*READABLE_CONTRACT), "text/plain")})
+    assert "could read very little" not in client.get("/").text
+
+
+def test_upload_status_message_surfaces_low_confidence():
+    """The status line the user sees right after uploading is the only place
+    that reports the outcome of an extraction they just triggered."""
+    source = (config.STATIC_DIR / "js" / "app.js").read_text(encoding="utf-8")
+    assert "low_confidence" in source, (
+        "app.js never reads payload.low_confidence, so a failed extraction is "
+        "reported to the user as an ordinary success"
+    )
+    assert "could read very little" in source

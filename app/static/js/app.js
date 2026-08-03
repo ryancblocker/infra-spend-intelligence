@@ -206,6 +206,12 @@ window.askChat = askChat;
   const input = document.getElementById("upload-input");
   const status = document.getElementById("upload-status");
 
+  // Kept identical to the server-rendered wording in mission_control.html, so
+  // the row added live after an upload and the row rendered on the next page
+  // load say the same thing.
+  const LOW_CONFIDENCE_NOTE =
+    "We could read very little from this document - the extracted terms may be incomplete.";
+
   function wireRemove(button) {
     button.addEventListener("click", async () => {
       const id = button.dataset.remove;
@@ -265,6 +271,12 @@ window.askChat = askChat;
     remove.dataset.remove = payload.contract_id;
     remove.textContent = "Remove";
     li.append(link, vendor, renewal, remove);
+    if (payload.low_confidence) {
+      const warning = document.createElement("span");
+      warning.className = "upload-warning";
+      warning.textContent = LOW_CONFIDENCE_NOTE;
+      li.append(warning);
+    }
     list.appendChild(li);
     wireRemove(remove);
   }
@@ -295,7 +307,14 @@ window.askChat = askChat;
       status.append(idEl);
       if (payload.vendor) status.append(` - ${payload.vendor}`);
       status.append(". Re-run the analysis to include it.");
-      status.classList.add("is-ok");
+      // A file we could barely read is not an ordinary success: say so here,
+      // where the user is looking, rather than only in the row below.
+      if (payload.low_confidence) {
+        status.append(` ${LOW_CONFIDENCE_NOTE}`);
+        status.classList.add("is-warning");
+      } else {
+        status.classList.add("is-ok");
+      }
       addRow(payload);
     } catch (err) {
       status.textContent = `Upload failed: ${err.message}`;

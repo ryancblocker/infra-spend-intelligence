@@ -65,6 +65,26 @@ FIELD_QUERIES = {
 # so these get one more look before being reported as genuinely absent.
 BOOLEAN_FIELDS = {"auto_renew", "has_mfn_clause", "has_price_protection_clause"}
 
+# The fields that decide whether an extraction is worth presenting as a reading
+# of the document. Without a vendor there is nothing to name the contract by;
+# without a renewal date there is no renewal risk, which is one of the only two
+# things an uploaded contract can produce at all.
+LOAD_BEARING_FIELDS = ("vendor", "renewal_date")
+
+
+def is_low_confidence(terms) -> bool:
+    """True when extraction did not recover the fields that make an uploaded
+    contract usable. Accepts a record or the plain dict stored in the manifest.
+
+    Deliberately not "any unresolved field": every optional clause the document
+    genuinely does not contain counts as unresolved, and a False boolean is
+    indistinguishable from a missing one (see BOOLEAN_FIELDS), so that rule was
+    true for virtually every upload. A flag that is always on is not a flag."""
+    if terms is None:
+        return True
+    data = terms.model_dump() if hasattr(terms, "model_dump") else dict(terms)
+    return not all(str(data.get(field) or "").strip() for field in LOAD_BEARING_FIELDS)
+
 
 def run() -> list[ExtractedContract]:
     results = []

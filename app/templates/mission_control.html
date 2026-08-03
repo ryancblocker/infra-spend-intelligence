@@ -77,6 +77,10 @@
       <span class="upload-vendor">{{ item.terms.vendor if item.terms and item.terms.vendor else item.original_filename }}</span>
       <span class="upload-renewal">{{ item.terms.renewal_date if item.terms and item.terms.renewal_date else "" }}</span>
       <button type="button" class="btn btn-ghost btn-remove" data-remove="{{ item.contract_id }}">Remove</button>
+      {% if item.low_confidence %}
+      <span class="upload-warning">We could read very little from this document - the extracted
+        terms may be incomplete.</span>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>

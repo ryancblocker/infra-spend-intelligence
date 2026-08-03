@@ -312,9 +312,11 @@ async def api_upload(file: UploadFile = File(...)):
         "vendor": record.vendor,
         "renewal_date": record.renewal_date,
         "extraction_source": record.extraction_source,
-        # The spec keeps a file whose LLM extraction returned nothing, falling back
-        # to regex - but says so, rather than presenting a guess as a reading.
-        "low_confidence": record.extraction_source == "offline" and bool(record.unresolved_fields),
+        # The spec keeps a file whose extraction recovered little - but says so,
+        # rather than presenting a guess as a reading. See
+        # extraction.is_low_confidence for why "any unresolved field" was the
+        # wrong test.
+        "low_confidence": extraction.is_low_confidence(record),
     }
 
 
@@ -338,7 +340,12 @@ def _uploaded_contracts() -> list[dict]:
     a "terms" key yet - the template must tolerate that. A corrupt manifest
     must not take down the whole dashboard either: every other figure on this
     page is still valid, so this degrades to an empty list and logs, the same
-    policy seed_db._rehydrate_uploads() uses for a reseed."""
+    policy seed_db.rehydrate_uploads() uses for a reseed.
+
+    low_confidence is computed here rather than in the template so the row and
+    the post-upload status message answer the question the same way, from one
+    definition."""
+    from app.agents import extraction
     from app.tools import uploads
 
     try:
@@ -346,7 +353,9 @@ def _uploaded_contracts() -> list[dict]:
     except uploads.ManifestError as exc:
         print(f"[PACT] Upload list unavailable on dashboard - manifest is corrupt: {exc}")
         return []
-    return sorted(entries, key=lambda e: e["contract_id"])
+    listed = [dict(entry, low_confidence=extraction.is_low_confidence(entry.get("terms")))
+              for entry in entries]
+    return sorted(listed, key=lambda e: e["contract_id"])
 
 
 @app.get("/", response_class=HTMLResponse)

@@ -725,6 +725,7 @@ tbody a.row-link:hover { color: var(--brand); }
 .upload-status { margin-top: 10px; min-height: 18px; font-size: 12.5px; color: var(--ink-secondary); }
 .upload-status.is-ok { color: var(--status-good); }
 .upload-status.is-error { color: var(--status-critical); }
+.upload-status.is-warning { color: var(--status-warning); }
 .upload-list { list-style: none; margin: 12px 0 0; padding: 0; }
 .upload-list li {
   display: grid;
@@ -740,3 +741,10 @@ tbody a.row-link:hover { color: var(--brand); }
 .upload-list a:hover { color: var(--brand); }
 .upload-vendor { color: var(--ink-secondary); }
 .upload-renewal { color: var(--ink-muted); font-size: 12px; }
+/* Spans the whole row rather than becoming a fifth grid column: the warning is
+   about the row, not another field in it. */
+.upload-warning {
+  grid-column: 1 / -1;
+  color: var(--status-warning);
+  font-size: 12px;
+}
