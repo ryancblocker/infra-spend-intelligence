@@ -302,3 +302,59 @@ def test_offline_extraction_reads_a_stated_annual_fee():
     record = extraction._extract_offline("U-0001", text)
     assert record.annual_cost == 120000.0
     assert record.monthly_cost == pytest.approx(10000.0)
+
+
+def test_offline_extraction_reads_a_stated_annualized_parenthetical():
+    """Phrasing modeled on app/data/contract_docs/C-0007.txt (verbatim there:
+    "recurring fees of $9,936.97 per month ($119,243.64 annualized), subject
+    to an Annual Escalator of 2% ..."), but with the monthly and annualized
+    figures deliberately NOT a clean *12 multiple of each other. If the
+    annual regex still doesn't match "annualized", reconcile_costs silently
+    derives 1000 * 12 = 12000.0 - which would make this test pass for the
+    wrong reason. Choosing a stated annual figure that a *12 derivation
+    could never produce (11000.0 != 12000.0) proves the value was actually
+    read from the parenthetical, not computed."""
+    text = (
+        "VENDOR: Acme Corp\n"
+        "2. FEES. Customer shall pay Vendor recurring fees of $1,000.00 per "
+        "month ($11,000.00 annualized), subject to an Annual Escalator of "
+        "2% applied on each anniversary of the Effective Date.\n"
+    )
+    record = extraction._extract_offline("U-0001", text)
+    assert record.monthly_cost == 1000.0
+    # Stated verbatim in the contract - must be read, not 1000.0 * 12.
+    assert record.annual_cost == 11000.0
+
+
+def test_money_does_not_cross_an_intervening_dollar_figure():
+    """[^.$]* used to stop only at a literal '.' or '$', so it could cross a
+    semicolon and an unrelated fee to grab the first $ downstream of the
+    keyword instead of the one actually associated with it."""
+    text = (
+        "VENDOR: Acme Corp\n"
+        "Recurring fees exclude a one-time setup fee of $500; the standard "
+        "monthly fee is $9,936.97 per month.\n"
+    )
+    record = extraction._extract_offline("U-0001", text)
+    assert record.monthly_cost == 9936.97
+
+
+def test_agentic_path_also_derives_the_missing_cost_figure(monkeypatch):
+    """reconcile_costs was wired into _extract_offline only. The agentic path
+    (extract_one -> _extract_agentic, what runs against a live model) must
+    get the same treatment so it doesn't ship a record with one cost field
+    set and the other left None."""
+    chunk = {"contract_id": "C-0007", "chunk_index": 0, "heading": "2. FEES",
+              "text": "Customer shall pay recurring fees of $1,000.00 per month.",
+              "distance": 0.1}
+    monkeypatch.setattr(extraction, "chat_structured",
+                         lambda system, user, schema, agent="unknown":
+                         ContractTerms(monthly_cost=1000.0))
+    monkeypatch.setattr(extraction, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(extraction, "_retrieve", lambda cid, queries: [chunk])
+    monkeypatch.setattr(config, "EXTRACTION_CACHE_ENABLED", False)
+
+    record = extraction.extract_one("C-0007", "contract text")
+
+    assert record.monthly_cost == 1000.0
+    assert record.annual_cost == pytest.approx(12000.0)

@@ -160,6 +160,12 @@ def extract_one(contract_id: str, text: str) -> ExtractedContract:
     else:
         record = _extract_agentic(contract_id, text)
 
+    # _extract_offline already reconciles for the offline path; applying it
+    # again here is a no-op once both fields are set (reconcile_costs only
+    # acts when exactly one side is None), so this is what makes the
+    # agentic path get the same treatment without double-deriving offline's.
+    record.monthly_cost, record.annual_cost = reconcile_costs(record.monthly_cost, record.annual_cost)
+
     _cache_put(contract_id, text, record)
     return record
 
@@ -318,8 +324,21 @@ def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
     esc_match = re.search(r"Annual Escalator of (\d+(?:\.\d+)?)%", text, re.IGNORECASE)
     escalator_pct = float(esc_match.group(1)) if esc_match else None
     minimum_commitment = _search(text, r"covering (.+?)\.\s")
-    monthly_cost = _money(text, r"(?:recurring fees|monthly (?:fee|charge)s?)[^.$]*\$\s*([\d,]+(?:\.\d{2})?)")
-    annual_cost = _money(text, r"(?:annual|yearly)\s+(?:fees|cost|charges)[^.$]*\$\s*([\d,]+(?:\.\d{2})?)")
+    # The $ must be tightly bound to its keyword (only "of"/"is" and an
+    # optional colon in between) so an unrelated fee mentioned earlier in the
+    # same clause can't be grabbed instead - see reconcile_costs for why the
+    # missing figure is never read this way, only computed.
+    monthly_cost = _money(
+        text, r"(?:recurring fees|monthly (?:fee|charge)s?)\s+(?:of|is)\s*:?\s*\$\s*([\d,]+(?:\.\d{2})?)"
+    )
+    annual_cost = (
+        # The corpus states the annual figure as a parenthetical next to the
+        # monthly one ("$X per month ($Y annualized)"), not as "annual fees
+        # of $Y" - this must be tried first so a stated figure is read
+        # rather than left to be derived as monthly * 12.
+        _money(text, r"\(\s*\$\s*([\d,]+(?:\.\d{2})?)\s*annualized\)")
+        or _money(text, r"(?:annual|yearly)\s+(?:fees|cost|charges)\s+(?:of|is)\s*:?\s*\$\s*([\d,]+(?:\.\d{2})?)")
+    )
     monthly_cost, annual_cost = reconcile_costs(monthly_cost, annual_cost)
     sla_summary = _search(text, r"Service Level Credits:\s*(.+)")
     liability_summary = _search(text, r"Limitation of Liability:\s*(.+)")
