@@ -549,3 +549,80 @@ def test_remove_deletes_row_and_file(client):
 
 def test_remove_unknown_id_returns_404(client):
     assert client.post("/api/uploads/U-9999/remove").status_code == 404
+
+
+def test_corrupt_pdf_upload_returns_422(client):
+    """The brief only exercised the corrupt-PDF case through document_loader
+    directly (test_corrupt_pdf_is_rejected); this proves the route wires the
+    same UnsupportedDocument reason through to a 422 response."""
+    response = client.post(
+        "/api/upload",
+        files={"file": ("broken.pdf", b"%PDF-1.4\nnot actually a pdf", "application/pdf")},
+    )
+    assert response.status_code == 422
+    assert "parsed" in response.json()["detail"]
+
+
+def test_upload_with_corrupt_manifest_returns_500(client):
+    """uploads.store() calls read_manifest() internally, which raises
+    ManifestError on a corrupt manifest file. Before this fix nothing in the
+    route caught it, so the user got an unhandled 500 traceback instead of an
+    error naming the actual problem."""
+    config.UPLOAD_MANIFEST_PATH.write_text("{not valid json", encoding="utf-8")
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+    assert response.status_code == 500
+    detail = response.json()["detail"].lower()
+    assert "manifest" in detail
+
+
+def test_oversized_upload_is_rejected_before_reading_the_body(client, monkeypatch):
+    """The 10 MB cap used to be enforced only after `await file.read()` pulled
+    the whole request body into memory. This proves the Content-Length header
+    is checked first: UploadFile.read is never called for a declared-oversized
+    upload.
+
+    Patches starlette.datastructures.UploadFile, not fastapi.UploadFile: the
+    object FastAPI actually injects for a File(...) parameter is a plain
+    Starlette UploadFile at runtime (fastapi.UploadFile is only the type
+    annotation), so that's the class whose read() the route really calls."""
+    from starlette.datastructures import UploadFile as StarletteUploadFile
+
+    read_calls = []
+    original_read = StarletteUploadFile.read
+
+    async def spy_read(self, *args, **kwargs):
+        read_calls.append(True)
+        return await original_read(self, *args, **kwargs)
+
+    monkeypatch.setattr(StarletteUploadFile, "read", spy_read)
+
+    oversized = b"x" * (config.MAX_UPLOAD_BYTES + 1)
+    response = client.post("/api/upload", files={"file": ("big.txt", oversized, "text/plain")})
+
+    assert response.status_code == 413
+    assert read_calls == [], "the body must not be read once Content-Length already exceeds the cap"
+
+
+def test_upload_failure_during_extraction_leaves_no_trace(client, monkeypatch):
+    """A genuine exception during extraction (not a poor-but-successful offline
+    fallback, which extract_one already handles internally) must roll the
+    whole upload back: no orphaned file, no stale manifest entry, no contracts
+    row left behind for an id nothing can reach."""
+    from app.agents import extraction
+    from app.tools import dataset_tools
+
+    def boom(contract_id, text):
+        raise RuntimeError("simulated extraction crash")
+
+    monkeypatch.setattr(extraction, "extract_one", boom)
+
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+
+    assert response.status_code == 500
+    assert "discarded" in response.json()["detail"].lower()
+
+    assert uploads.read_manifest()["entries"] == {}
+    assert not (config.UPLOAD_DIR / "U-0001.txt").exists()
+    assert dataset_tools.fetch_contract("U-0001") is None

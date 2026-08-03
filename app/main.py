@@ -164,38 +164,75 @@ def api_reset():
 
 
 @app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...)):
+async def api_upload(request: Request, file: UploadFile = File(...)):
     """Accept a contract document, extract its terms, and register it as U-000N.
 
     Extraction runs synchronously: the user should learn immediately whether we
     could read their contract, not discover it during the next pipeline run."""
     from app.agents import extraction
     from app.tools import dataset_tools, uploads
-    from app.tools.document_loader import UnsupportedDocument
-    from app.tools.uploads import UploadTooLarge
+    from app.tools.document_loader import UnsupportedDocument, UnsupportedFileType
+    from app.tools.uploads import ManifestError, UploadTooLarge
+
+    # Reject an obviously oversized upload before pulling the whole body into
+    # memory. Content-Length can be absent, or understate the real size, so
+    # this is only an optimization - the byte-count check inside
+    # uploads.store() below is the authority and still runs on whatever bytes
+    # are actually received.
+    declared_length = request.headers.get("content-length")
+    if declared_length is not None and declared_length.isdigit() and int(declared_length) > config.MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File exceeds the {config.MAX_UPLOAD_BYTES // 1_048_576} MB limit.",
+        )
 
     data = await file.read()
     try:
         contract_id, path, text = uploads.store(file.filename or "upload", data)
     except UploadTooLarge as exc:
         raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except UnsupportedFileType as exc:
+        raise HTTPException(status_code=415, detail=exc.reason) from exc
     except UnsupportedDocument as exc:
-        status = 415 if "Unsupported file type" in exc.reason else 422
-        raise HTTPException(status_code=status, detail=exc.reason) from exc
+        raise HTTPException(status_code=422, detail=exc.reason) from exc
+    except ManifestError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"The upload record at {config.UPLOAD_MANIFEST_PATH} is unreadable: {exc}",
+        ) from exc
 
-    # Name the stored file after the contract id so config.document_path can find it.
+    # Rename the file to <contract_id>.txt and persist that to the manifest
+    # immediately - before any extraction work - so a crash or exception below
+    # can never leave the manifest pointing at a filename that no longer
+    # exists on disk (which would orphan the file: nothing could resolve it
+    # via config.document_path, and remove() would unlink the wrong name).
     final_path = path.with_name(f"{contract_id}.txt")
     path.rename(final_path)
     manifest = uploads.read_manifest()
     manifest["entries"][contract_id]["stored_filename"] = final_path.name
-
-    # extract_one already applies reconcile_costs internally (Task 3), so no
-    # second application is done here - that would just be a confusing no-op.
-    record = extraction.extract_one(contract_id, text)
-
-    manifest["entries"][contract_id]["terms"] = record.model_dump(mode="json")
     uploads.write_manifest(manifest)
-    dataset_tools.upsert_upload_row(record)
+
+    try:
+        # extract_one already applies reconcile_costs internally (Task 3), so
+        # no second application is done here - that would just be a
+        # confusing no-op. NOTE: a poor extraction (the LLM path producing
+        # nothing usable, falling back to the offline regex extractor) is
+        # NOT an exception - extract_one handles that internally and still
+        # returns a usable record. Rollback below is only for a genuine
+        # exception (e.g. the LLM call itself blowing up).
+        record = extraction.extract_one(contract_id, text)
+        manifest["entries"][contract_id]["terms"] = record.model_dump(mode="json")
+        uploads.write_manifest(manifest)
+        dataset_tools.upsert_upload_row(record)
+    except Exception as exc:
+        # A failed upload must leave no trace: no orphaned file, no stale
+        # manifest entry, no contracts row for an id nothing else can reach.
+        uploads.remove(contract_id)
+        dataset_tools.delete_upload_row(contract_id)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not process the uploaded contract; the upload was discarded: {exc}",
+        ) from exc
 
     return {
         "contract_id": contract_id,

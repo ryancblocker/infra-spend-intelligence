@@ -21,11 +21,21 @@ class UnsupportedDocument(Exception):
         self.reason = reason
 
 
+class UnsupportedFileType(UnsupportedDocument):
+    """Raised specifically when the file extension is not in the allow-list.
+
+    A distinct subclass rather than relying on callers pattern-matching the
+    reason string: main.py needs to pick 415 vs 422, and substring-matching
+    "Unsupported file type" against exc.reason coupled that HTTP decision to
+    this module's exact wording - rewording the message here would silently
+    flip which status code a caller returns, with no test catching it."""
+
+
 def load_document(filename: str, data: bytes) -> str:
     suffix = Path(filename).suffix.lower()
     if suffix not in config.ALLOWED_UPLOAD_SUFFIXES:
         permitted = ", ".join(config.ALLOWED_UPLOAD_SUFFIXES)
-        raise UnsupportedDocument(f"Unsupported file type '{suffix or filename}'. Permitted types: {permitted}.")
+        raise UnsupportedFileType(f"Unsupported file type '{suffix or filename}'. Permitted types: {permitted}.")
     if suffix == ".txt":
         return _load_txt(data)
     return _load_pdf(data)
