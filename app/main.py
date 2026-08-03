@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi import FastAPI, File, HTTPException, UploadFile  # noqa: E402
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse  # noqa: E402
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from fastapi.templating import Jinja2Templates  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
@@ -37,6 +37,31 @@ from app.tools.llm_client import (  # noqa: E402
 
 app = FastAPI(title="PACT - Portfolio Agentic Contract Tracker")
 app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
+
+
+@app.middleware("http")
+async def enforce_upload_size_limit(request: Request, call_next):
+    """Reject an obviously oversized upload via Content-Length before
+    Starlette's multipart parser ever touches the body.
+
+    A check inside the /api/upload route runs too late to matter: FastAPI
+    resolves an `UploadFile` parameter by calling request.form(), which feeds
+    the ENTIRE request body through MultiPartParser before the endpoint
+    function is even entered. Middleware is the only place in this stack that
+    runs before call_next hands the request to routing/parsing, so it is the
+    only place this guard can actually stop the body from being buffered.
+
+    Content-Length can be missing or understate the real size, so a missing
+    or non-numeric header falls straight through to call_next and lets
+    uploads.store()'s post-read byte count remain the real guarantee."""
+    if request.method == "POST" and request.url.path == "/api/upload":
+        declared = request.headers.get("content-length")
+        if declared is not None and declared.isdigit() and int(declared) > config.MAX_UPLOAD_BYTES:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": f"File exceeds the {config.MAX_UPLOAD_BYTES // 1_048_576} MB limit."},
+            )
+    return await call_next(request)
 
 templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 templates.env.filters["money"] = lambda v: f"${v:,.0f}" if v is not None else "N/A"
@@ -163,28 +188,51 @@ def api_reset():
     return {"ok": True, "has_run": False}
 
 
+def _discard_failed_upload(contract_id: str, *possible_paths: Path) -> None:
+    """Best-effort cleanup after a failed upload: the file (whichever name it
+    currently has), the manifest entry, and any DB row.
+
+    Each step is individually guarded. A failure in cleanup itself must never
+    propagate - if it did, it would replace the exception the caller is about
+    to report with an unrelated one, masking the actual cause from the user.
+    Accepts every filename the upload could plausibly be under (pre- and
+    post-rename) because uploads.remove() only unlinks whatever the manifest
+    currently claims is the stored filename, and the failure window this
+    guards against is exactly a manifest that disagrees with what is really
+    on disk."""
+    from app.tools import dataset_tools, uploads
+
+    try:
+        uploads.remove(contract_id)
+    except Exception:
+        pass
+    for candidate in possible_paths:
+        try:
+            candidate.unlink(missing_ok=True)
+        except Exception:
+            pass
+    try:
+        dataset_tools.delete_upload_row(contract_id)
+    except Exception:
+        pass
+
+
 @app.post("/api/upload")
-async def api_upload(request: Request, file: UploadFile = File(...)):
+async def api_upload(file: UploadFile = File(...)):
     """Accept a contract document, extract its terms, and register it as U-000N.
 
     Extraction runs synchronously: the user should learn immediately whether we
-    could read their contract, not discover it during the next pipeline run."""
+    could read their contract, not discover it during the next pipeline run.
+
+    The 10 MB cap is enforced twice: enforce_upload_size_limit (middleware,
+    above) rejects an oversized upload via Content-Length before the body is
+    parsed at all, and uploads.store() below re-checks the actual byte count
+    once read - the real guarantee, since Content-Length can be absent or
+    wrong."""
     from app.agents import extraction
     from app.tools import dataset_tools, uploads
     from app.tools.document_loader import UnsupportedDocument, UnsupportedFileType
     from app.tools.uploads import ManifestError, UploadTooLarge
-
-    # Reject an obviously oversized upload before pulling the whole body into
-    # memory. Content-Length can be absent, or understate the real size, so
-    # this is only an optimization - the byte-count check inside
-    # uploads.store() below is the authority and still runs on whatever bytes
-    # are actually received.
-    declared_length = request.headers.get("content-length")
-    if declared_length is not None and declared_length.isdigit() and int(declared_length) > config.MAX_UPLOAD_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"File exceeds the {config.MAX_UPLOAD_BYTES // 1_048_576} MB limit.",
-        )
 
     data = await file.read()
     try:
@@ -201,18 +249,20 @@ async def api_upload(request: Request, file: UploadFile = File(...)):
             detail=f"The upload record at {config.UPLOAD_MANIFEST_PATH} is unreadable: {exc}",
         ) from exc
 
-    # Rename the file to <contract_id>.txt and persist that to the manifest
-    # immediately - before any extraction work - so a crash or exception below
-    # can never leave the manifest pointing at a filename that no longer
-    # exists on disk (which would orphan the file: nothing could resolve it
-    # via config.document_path, and remove() would unlink the wrong name).
+    # Everything from here on is one unit: rename, manifest update,
+    # extraction, and the DB row all either land together or none of them do.
+    # A failure at any point - including the manifest write right after the
+    # rename - rolls the whole upload back, so a crash never leaves the
+    # manifest pointing at a filename that no longer exists on disk (which
+    # would orphan the file: nothing could resolve it via
+    # config.document_path, and remove() would unlink the wrong name).
     final_path = path.with_name(f"{contract_id}.txt")
-    path.rename(final_path)
-    manifest = uploads.read_manifest()
-    manifest["entries"][contract_id]["stored_filename"] = final_path.name
-    uploads.write_manifest(manifest)
-
     try:
+        path.rename(final_path)
+        manifest = uploads.read_manifest()
+        manifest["entries"][contract_id]["stored_filename"] = final_path.name
+        uploads.write_manifest(manifest)
+
         # extract_one already applies reconcile_costs internally (Task 3), so
         # no second application is done here - that would just be a
         # confusing no-op. NOTE: a poor extraction (the LLM path producing
@@ -225,10 +275,10 @@ async def api_upload(request: Request, file: UploadFile = File(...)):
         uploads.write_manifest(manifest)
         dataset_tools.upsert_upload_row(record)
     except Exception as exc:
-        # A failed upload must leave no trace: no orphaned file, no stale
-        # manifest entry, no contracts row for an id nothing else can reach.
-        uploads.remove(contract_id)
-        dataset_tools.delete_upload_row(contract_id)
+        # A failed upload must leave no trace: no orphaned file under either
+        # name, no stale manifest entry, no contracts row for an id nothing
+        # else can reach.
+        _discard_failed_upload(contract_id, path, final_path)
         raise HTTPException(
             status_code=500,
             detail=f"Could not process the uploaded contract; the upload was discarded: {exc}",

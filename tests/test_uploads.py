@@ -576,32 +576,38 @@ def test_upload_with_corrupt_manifest_returns_500(client):
     assert "manifest" in detail
 
 
-def test_oversized_upload_is_rejected_before_reading_the_body(client, monkeypatch):
-    """The 10 MB cap used to be enforced only after `await file.read()` pulled
-    the whole request body into memory. This proves the Content-Length header
-    is checked first: UploadFile.read is never called for a declared-oversized
-    upload.
+def test_oversized_upload_never_reaches_the_multipart_parser(client, monkeypatch):
+    """The 10 MB cap must be enforced before Starlette's multipart parser ever
+    touches the body. A check inside the route (or a spy on UploadFile.read)
+    runs too late to prove this: FastAPI resolves the `UploadFile` parameter
+    by calling request.form(), which parses the ENTIRE body through
+    MultiPartParser BEFORE the endpoint function is entered - and the parser
+    writes file bytes via `part.file.write()`, a path a read()-spy never
+    observes at all. This only proves real protection by patching the parser
+    itself and asserting it never receives file body bytes - i.e. that
+    middleware short-circuited the request before call_next reached routing."""
+    from starlette.formparsers import MultiPartParser
 
-    Patches starlette.datastructures.UploadFile, not fastapi.UploadFile: the
-    object FastAPI actually injects for a File(...) parameter is a plain
-    Starlette UploadFile at runtime (fastapi.UploadFile is only the type
-    annotation), so that's the class whose read() the route really calls."""
-    from starlette.datastructures import UploadFile as StarletteUploadFile
+    parsed_chunk_sizes = []
+    original_on_part_data = MultiPartParser.on_part_data
 
-    read_calls = []
-    original_read = StarletteUploadFile.read
+    def spy_on_part_data(self, data, start, end):
+        parsed_chunk_sizes.append(end - start)
+        return original_on_part_data(self, data, start, end)
 
-    async def spy_read(self, *args, **kwargs):
-        read_calls.append(True)
-        return await original_read(self, *args, **kwargs)
-
-    monkeypatch.setattr(StarletteUploadFile, "read", spy_read)
+    monkeypatch.setattr(MultiPartParser, "on_part_data", spy_on_part_data)
 
     oversized = b"x" * (config.MAX_UPLOAD_BYTES + 1)
     response = client.post("/api/upload", files={"file": ("big.txt", oversized, "text/plain")})
 
     assert response.status_code == 413
-    assert read_calls == [], "the body must not be read once Content-Length already exceeds the cap"
+    assert response.json() == {
+        "detail": f"File exceeds the {config.MAX_UPLOAD_BYTES // 1_048_576} MB limit."
+    }
+    assert parsed_chunk_sizes == [], (
+        "the multipart parser must never see file body bytes once Content-Length "
+        "already exceeds the cap - if this fails, the guard ran too late to help"
+    )
 
 
 def test_upload_failure_during_extraction_leaves_no_trace(client, monkeypatch):
@@ -626,3 +632,67 @@ def test_upload_failure_during_extraction_leaves_no_trace(client, monkeypatch):
     assert uploads.read_manifest()["entries"] == {}
     assert not (config.UPLOAD_DIR / "U-0001.txt").exists()
     assert dataset_tools.fetch_contract("U-0001") is None
+
+
+def test_write_manifest_failure_after_rename_rolls_back_completely(client, monkeypatch):
+    """The write_manifest() call immediately after the rename used to run
+    unguarded. If it failed, the file would already be sitting at
+    <contract_id>.txt on disk while the manifest still named the pre-rename
+    file - the original orphaned-file bug, just in a narrower window. This
+    proves that failure now triggers the same full rollback as any other
+    exception during upload processing: neither the pre- nor post-rename
+    filename is left behind, the manifest entry is gone, and no DB row
+    remains."""
+    from app.tools import dataset_tools, uploads
+
+    original_write_manifest = uploads.write_manifest
+    calls = {"count": 0}
+
+    def flaky_write_manifest(manifest):
+        calls["count"] += 1
+        # Call 1 is uploads.store()'s own internal write (the initial
+        # manifest entry); call 2 is the route's post-rename write - the one
+        # this test targets.
+        if calls["count"] == 2:
+            raise OSError("simulated disk failure writing the manifest")
+        return original_write_manifest(manifest)
+
+    monkeypatch.setattr(uploads, "write_manifest", flaky_write_manifest)
+
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+
+    assert response.status_code == 500
+    assert "discarded" in response.json()["detail"].lower()
+
+    assert uploads.read_manifest()["entries"] == {}
+    assert not (config.UPLOAD_DIR / "U-0001.txt").exists()
+    assert not (config.UPLOAD_DIR / "deal.txt").exists()
+    assert dataset_tools.fetch_contract("U-0001") is None
+
+
+def test_rollback_failure_does_not_mask_the_original_error(client, monkeypatch):
+    """If the cleanup after a genuine extraction failure itself fails (e.g. a
+    disk error while unlinking or writing the manifest during rollback), the
+    user must still see the original 'upload was discarded' error - not an
+    unrelated exception raised while trying to clean up. Cleanup failures are
+    swallowed; the original cause is what gets reported."""
+    from app.agents import extraction
+    from app.tools import uploads
+
+    def boom_extract(contract_id, text):
+        raise RuntimeError("simulated extraction crash")
+
+    def boom_remove(contract_id):
+        raise OSError("simulated failure while cleaning up")
+
+    monkeypatch.setattr(extraction, "extract_one", boom_extract)
+    monkeypatch.setattr(uploads, "remove", boom_remove)
+
+    body = b"VENDOR: Acme Corp\nThis Agreement continues through 2026-12-31.\n"
+    response = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+
+    assert response.status_code == 500
+    detail = response.json()["detail"]
+    assert "discarded" in detail.lower()
+    assert "simulated extraction crash" in detail
