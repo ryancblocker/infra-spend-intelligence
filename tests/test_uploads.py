@@ -97,7 +97,11 @@ def test_scanned_pdf_is_rejected():
 def test_corrupt_pdf_is_rejected():
     with pytest.raises(UnsupportedDocument) as excinfo:
         document_loader.load_document("broken.pdf", b"%PDF-1.4\nnot actually a pdf")
-    assert excinfo.value.reason
+    # Must name the actual cause, not just be non-empty - the underlying pypdf
+    # error text should come through rather than be swallowed into a generic
+    # message like "error".
+    assert "parsed" in excinfo.value.reason
+    assert "Stream has ended unexpectedly" in excinfo.value.reason
 
 
 def test_unsupported_extension_is_rejected():
