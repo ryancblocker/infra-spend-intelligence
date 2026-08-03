@@ -147,8 +147,11 @@ def welcome(request: Request):
 @app.post("/api/reset")
 def api_reset():
     """Clear the current run so the demo can be replayed from zero. Idempotent."""
-    global _LAST_RUN
+    global _LAST_RUN, _LAST_NODE_DETAILS
     _LAST_RUN = {}
+    # Must clear too, or the pipeline still renders green from the previous run
+    # after a reset that is supposed to return everything to zero.
+    _LAST_NODE_DETAILS = {}
     persistence.clear_run()
     return {"ok": True, "has_run": False}
 
