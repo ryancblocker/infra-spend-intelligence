@@ -131,8 +131,16 @@ def next_contract_id(manifest: dict) -> str:
 
 
 def unique_path(basename: str) -> Path:
-    """Suffix -2, -3, ... rather than overwriting. Two contracts genuinely can
-    share a filename, and silently replacing one would lose a user's document."""
+    """Pick a free name under UPLOAD_DIR, suffixing -2, -3, ... rather than
+    overwriting: two contracts genuinely can share a filename, and silently
+    replacing one would lose a user's document.
+
+    The suffix is transient. api_upload renames the file to <contract_id>.txt
+    as soon as store() returns - config.document_path() resolves documents by
+    id - so no -2 file survives past the end of the request. What the suffix
+    actually does is stop the second upload from clobbering the first in the
+    window before that rename; both documents are then kept under their own
+    contract ids."""
     config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     candidate = config.UPLOAD_DIR / basename
     if not candidate.exists():

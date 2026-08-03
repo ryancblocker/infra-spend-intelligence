@@ -1121,3 +1121,24 @@ def test_upload_status_message_surfaces_low_confidence():
         "reported to the user as an ordinary success"
     )
     assert "could read very little" in source
+
+
+def test_remove_with_corrupt_manifest_returns_500(client):
+    """uploads.remove() calls read_manifest() too. The upload route already
+    turns ManifestError into a 500 that names the manifest; this one let it
+    escape as a raw traceback, so the same fault reported itself two different
+    ways depending on which button the user pressed."""
+    config.UPLOAD_MANIFEST_PATH.write_text("{not valid json", encoding="utf-8")
+
+    response = client.post("/api/uploads/U-0001/remove")
+
+    assert response.status_code == 500
+    assert "manifest" in response.json()["detail"].lower()
+
+
+def test_unique_path_docstring_matches_what_the_route_does():
+    """The -2 suffix is transient: api_upload renames the stored file to
+    <contract_id>.txt immediately, so no -2 file ever persists. Duplicates are
+    still both kept - by the rename, not by the suffix."""
+    doc = uploads.unique_path.__doc__
+    assert "rename" in doc.lower()

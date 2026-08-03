@@ -323,8 +323,20 @@ async def api_upload(file: UploadFile = File(...)):
 @app.post("/api/uploads/{contract_id}/remove")
 def api_upload_remove(contract_id: str):
     from app.tools import dataset_tools, uploads
+    from app.tools.uploads import ManifestError
 
-    if not uploads.remove(contract_id):
+    try:
+        removed = uploads.remove(contract_id)
+    except ManifestError as exc:
+        # Same policy and same wording as /api/upload: one fault should not
+        # report itself two different ways depending on which button was
+        # pressed. Without this the user got a raw traceback.
+        raise HTTPException(
+            status_code=500,
+            detail=f"The upload record at {config.UPLOAD_MANIFEST_PATH} is unreadable: {exc}",
+        ) from exc
+
+    if not removed:
         raise HTTPException(status_code=404, detail=f"No uploaded contract {contract_id}.")
     dataset_tools.delete_upload_row(contract_id)
     # Drop the contract's clause chunks too, or the index keeps citing a
