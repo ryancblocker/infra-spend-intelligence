@@ -86,13 +86,13 @@
     <div class="section-title">Top Savings Opportunities</div>
     {% if top_scenarios %}
       {% for s in top_scenarios %}
-      <div class="feed-row">
+      <a class="feed-row" href="/contracts/{{ s.contract_id }}" style="text-decoration:none; color:inherit;">
         <div>
           <div class="feed-title">{{ s.recommended_action }} · {{ s.asset_id }}</div>
           <div class="feed-meta">{{ s.issue }}</div>
         </div>
         <div class="feed-value savings figures">{{ s.estimated_annual_savings | money }}</div>
-      </div>
+      </a>
       {% endfor %}
     {% else %}
       <div class="empty-state">Run the pipeline to see ranked opportunities.</div>
@@ -103,7 +103,7 @@
     <div class="section-title">Upcoming Renewals</div>
     {% if renewal_risks %}
       {% for r in renewal_risks %}
-      <div class="feed-row">
+      <a class="feed-row" href="/contracts/{{ r.contract_id }}" style="text-decoration:none; color:inherit;">
         <div>
           <div class="feed-title">{{ r.contract_label }}</div>
           <div class="feed-meta">{{ r.days_remaining }} days remaining</div>
@@ -111,7 +111,7 @@
         <span class="badge badge-{{ 'critical' if r.risk == 'HIGH' else ('warning' if r.risk == 'MEDIUM' else 'good') }}">
           <span class="badge-dot"></span>{{ r.risk }}
         </span>
-      </div>
+      </a>
       {% endfor %}
     {% else %}
       <div class="empty-state">Run the pipeline to see renewal risk.</div>

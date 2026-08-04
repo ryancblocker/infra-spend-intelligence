@@ -395,6 +395,7 @@ tbody a.row-link:hover { color: var(--brand); }
   border-bottom: 1px solid var(--border);
 }
 .feed-row:last-child { border-bottom: none; }
+a.feed-row:hover .feed-title { color: var(--brand); }
 .feed-title { font-weight: 700; font-size: 13.5px; }
 .feed-meta { font-size: 12px; color: var(--ink-muted); }
 .feed-value { font-weight: 800; font-size: 15px; }
