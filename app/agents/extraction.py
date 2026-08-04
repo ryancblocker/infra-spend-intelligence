@@ -188,7 +188,7 @@ def extract_one(contract_id: str, text: str) -> ExtractedContract:
     record.monthly_cost, record.annual_cost = reconcile_costs(record.monthly_cost, record.annual_cost)
     # Same treatment, same reason: the model reads what the document states, and
     # Python puts it into the one form every downstream consumer parses.
-    record.renewal_date = normalize_date(record.renewal_date)
+    record.renewal_date = coerce_renewal_date(record.renewal_date)
 
     _cache_put(contract_id, text, record)
     return record
@@ -336,6 +336,25 @@ def _cache_put(contract_id: str, text: str, record: ExtractedContract) -> None:
 # a wrong renewal date is worse than an unparsed one.
 _DATE_FORMATS = ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%B %d, %Y", "%b %d, %Y",
                  "%B %d %Y", "%d-%b-%Y", "%Y/%m/%d")
+
+
+def coerce_renewal_date(value: str) -> str:
+    """Return an ISO date, or "" - never prose.
+
+    Two failure modes, one guard. The model reports a date the way the contract
+    writes it ("30 September 2026"), which normalize_date converts. But asked for
+    a renewal date it will also sometimes answer with the clause it found nearby
+    - "60 days prior to term expiry" came back from a live run. Storing that in a
+    date column presents a guess as a reading, and renewal.run() parses %Y-%m-%d,
+    so the contract would drop out of renewal risk silently anyway. Recording
+    that we read no date is the honest outcome; is_low_confidence then flags it.
+    """
+    normalized = normalize_date(value)
+    try:
+        datetime.strptime((normalized or "").strip(), "%Y-%m-%d")
+    except (ValueError, AttributeError):
+        return ""
+    return normalized
 
 
 def normalize_date(value: str) -> str:

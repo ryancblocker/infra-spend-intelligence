@@ -1525,3 +1525,29 @@ def test_upload_response_filename_is_sanitized(client):
         "/api/upload", files={"file": ("../../etc/passwd.txt", body, "text/plain")}
     ).json()
     assert payload["original_filename"] == "passwd.txt"
+
+
+def test_coerce_renewal_date_rejects_prose():
+    """A small model asked for a renewal date sometimes answers with the clause it
+    found near one - "60 days prior to term expiry" came back from a live run.
+    renewal.run() parses %Y-%m-%d, so storing that prose would silently drop the
+    contract from renewal risk while looking like a successful extraction."""
+    assert extraction.coerce_renewal_date("60 days prior to term expiry") == ""
+    assert extraction.coerce_renewal_date("upon each anniversary") == ""
+    assert extraction.coerce_renewal_date("N/A") == ""
+
+
+def test_coerce_renewal_date_keeps_and_normalizes_real_dates():
+    assert extraction.coerce_renewal_date("2026-09-30") == "2026-09-30"
+    assert extraction.coerce_renewal_date("30 September 2026") == "2026-09-30"
+
+
+def test_coerce_renewal_date_handles_empty_input():
+    assert extraction.coerce_renewal_date("") == ""
+    assert extraction.coerce_renewal_date(None) == ""
+
+
+def test_coerce_renewal_date_does_not_guess_at_ambiguous_numeric_forms():
+    """03/04/2026 is 3 April or 4 March depending on where it was written. We do
+    not know, so we must not pick - it is recorded as unread, not guessed."""
+    assert extraction.coerce_renewal_date("03/04/2026") == ""
