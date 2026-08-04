@@ -284,14 +284,71 @@ window.askChat = askChat;
     wireRemove(remove);
   }
 
+  // Extraction runs up to 3 agentic LLM iterations against a local model
+  // (16-27s each, measured live), so a real upload takes 60-75s with no way
+  // to know how far it has got - there is no "percent done" to report. This
+  // starts an indeterminate progress bar plus a running elapsed-time counter
+  // (built with createElement/textContent, never innerHTML - same rule as
+  // the rest of this file) and returns a function that removes both. The
+  // returned function is safe to call more than once and is called on every
+  // exit from send(): success, an error response, and a network exception -
+  // a failed upload must not leave a bar animating forever.
+  function startProgress() {
+    const wrap = document.createElement("div");
+    wrap.className = "upload-progress";
+    // The bar's motion and the elapsed text are cosmetic ticks, not the news
+    // - the meaningful state changes (done, or what went wrong) are still
+    // announced through #upload-status's own aria-live="polite". Without
+    // this, a screen reader would re-announce the elapsed time every second
+    // for up to 75 seconds.
+    wrap.setAttribute("aria-live", "off");
+
+    const track = document.createElement("div");
+    track.className = "upload-progress-track";
+    const fill = document.createElement("div");
+    fill.className = "upload-progress-fill";
+    track.appendChild(fill);
+
+    const elapsed = document.createElement("span");
+    elapsed.className = "upload-elapsed";
+    elapsed.textContent = "0:00 elapsed";
+
+    wrap.append(track, elapsed);
+    status.insertAdjacentElement("afterend", wrap);
+
+    const startedAt = performance.now();
+    const tick = () => {
+      const totalSeconds = Math.round((performance.now() - startedAt) / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      elapsed.textContent = `${minutes}:${seconds} elapsed`;
+    };
+    const timer = setInterval(tick, 1000);
+
+    let stopped = false;
+    return function stopProgress() {
+      if (stopped) return;
+      stopped = true;
+      clearInterval(timer);
+      wrap.remove();
+    };
+  }
+
   async function send(file) {
-    status.textContent = `Reading ${file.name}...`;
+    // The 60-75s figure is measured live against the qwen3:1.7b model this
+    // app runs locally, not a guess - see the extraction route's own comment
+    // in main.py for the same number.
+    status.textContent =
+      `Reading ${file.name}… this usually takes about a minute (60–75s) ` +
+      "with the local model.";
     status.className = "upload-status";
+    const stopProgress = startProgress();
     const body = new FormData();
     body.append("file", file);
     try {
       const response = await fetch("/api/upload", { method: "POST", body });
       const payload = await response.json();
+      stopProgress();
       if (!response.ok) {
         // The API's detail names the actual cause - show it rather than "upload failed".
         status.textContent = payload.detail || "Upload failed.";
@@ -320,6 +377,13 @@ window.askChat = askChat;
       }
       addRow(payload);
     } catch (err) {
+      // Reached when fetch() itself rejects (e.g. the server dropped the
+      // connection) or response.json() fails to parse - both happen before
+      // the stopProgress() call above runs, so the bar and timer are still
+      // up and must be torn down here too. stopProgress() is idempotent, so
+      // this is safe even though it can never double-fire in practice: this
+      // catch and the earlier stopProgress() cover disjoint failure points.
+      stopProgress();
       status.textContent = `Upload failed: ${err.message}`;
       status.classList.add("is-error");
     }

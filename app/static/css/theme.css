@@ -748,3 +748,40 @@ tbody a.row-link:hover { color: var(--brand); }
   color: var(--status-warning);
   font-size: 12px;
 }
+
+/* Extraction has no notion of "percent done" - up to 3 agentic LLM passes
+   against a local model, each one a black box until it returns - so this is
+   deliberately indeterminate rather than a bar that creeps toward a number
+   and stalls. The sliding fill mirrors the pipeline rail's .running dot
+   (pulse, ease-in-out, brand-colored) rather than inventing a new motion
+   language. */
+.upload-progress-track {
+  position: relative;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.upload-progress-fill {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 35%;
+  border-radius: 999px;
+  background: var(--brand);
+  animation: upload-indeterminate 1.4s ease-in-out infinite;
+}
+@keyframes upload-indeterminate {
+  0% { left: -35%; }
+  100% { left: 100%; }
+}
+.upload-elapsed { margin-top: 6px; font-size: 12px; color: var(--ink-muted); }
+
+/* prefers-reduced-motion: the bar stops sliding and sits as a plain static
+   track - the elapsed-seconds text (already present regardless of motion
+   preference) carries the "still working" signal instead of movement. */
+@media (prefers-reduced-motion: reduce) {
+  .upload-progress-fill { animation: none; left: 0; width: 100%; opacity: 0.3; }
+}
