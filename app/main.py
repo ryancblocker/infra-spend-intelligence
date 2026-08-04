@@ -199,6 +199,22 @@ def api_reset():
     return {"ok": True, "has_run": False}
 
 
+class _UploadRemovedDuringProcessing(Exception):
+    """Raised when this upload's own manifest entry is gone by the time
+    api_upload tries to update it - i.e. the user clicked Remove on this very
+    upload (visible on the dashboard as soon as uploads.store() commits, long
+    before extraction finishes) while it was still being processed.
+
+    Caught by the same except-block as any other failure in api_upload,
+    which discards whatever partial artifacts this attempt produced (index
+    chunks, mainly - the manifest entry and file are already gone, removed
+    by the user) and reports the upload as not completed. The alternative -
+    swallowing this and finishing normally - would silently re-add a
+    manifest entry the user just explicitly deleted: the identical bug this
+    whole fix exists to prevent, just aimed at the upload's own id instead of
+    a different one."""
+
+
 def _discard_failed_upload(contract_id: str, *possible_paths: Path) -> None:
     """Best-effort cleanup after a failed upload: the file (whichever name it
     currently has), the manifest entry, any index chunks, and any DB row.
@@ -271,12 +287,27 @@ async def api_upload(file: UploadFile = File(...)):
     # manifest pointing at a filename that no longer exists on disk (which
     # would orphan the file: nothing could resolve it via
     # config.document_path, and remove() would unlink the wrong name).
+    #
+    # Both manifest writes below go through uploads.update_entry(), which
+    # re-reads the manifest immediately before writing and merges only this
+    # contract_id's own fields - NOT a `manifest = uploads.read_manifest()`
+    # captured once and reused across extraction. Extraction below takes
+    # 60-75s against a live model; holding a manifest snapshot across that
+    # gap and writing it back afterwards silently reverted every OTHER
+    # manifest change made while it ran (e.g. a Remove of a different
+    # upload succeeded - file unlinked, DB row deleted - and then got
+    # resurrected in the manifest the moment this request finished, which a
+    # later reseed would have turned back into a live contracts row). The
+    # first write, right after the rename, has only a tiny window before
+    # this fix - but the same defect, so it goes through update_entry() too
+    # for the same reason, not just for symmetry.
     final_path = path.with_name(f"{contract_id}.txt")
     try:
         path.rename(final_path)
-        manifest = uploads.read_manifest()
-        manifest["entries"][contract_id]["stored_filename"] = final_path.name
-        uploads.write_manifest(manifest)
+        if not uploads.update_entry(contract_id, {"stored_filename": final_path.name}):
+            raise _UploadRemovedDuringProcessing(
+                f"upload {contract_id} was removed before it could be finalized"
+            )
 
         # Index BEFORE extracting, not after: the extraction agent works by
         # retrieving clause chunks for this contract_id, so an unindexed
@@ -305,8 +336,13 @@ async def api_upload(file: UploadFile = File(...)):
         # returns a usable record. Rollback below is only for a genuine
         # exception (e.g. the LLM call itself blowing up).
         record = await run_in_threadpool(extraction.extract_one, contract_id, text)
-        manifest["entries"][contract_id]["terms"] = record.model_dump(mode="json")
-        uploads.write_manifest(manifest)
+        if not uploads.update_entry(contract_id, {"terms": record.model_dump(mode="json")}):
+            # The user removed this exact upload while extraction was still
+            # running. See _UploadRemovedDuringProcessing's docstring for why
+            # the entry must not be re-added here.
+            raise _UploadRemovedDuringProcessing(
+                f"upload {contract_id} was removed while it was still processing"
+            )
         dataset_tools.upsert_upload_row(record)
     except Exception as exc:
         # A failed upload must leave no trace: no orphaned file under either

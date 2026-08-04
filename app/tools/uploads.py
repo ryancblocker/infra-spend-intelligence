@@ -185,6 +185,36 @@ def store(filename: str, data: bytes) -> tuple[str, Path, str]:
     return contract_id, path, text
 
 
+def update_entry(contract_id: str, changes: dict) -> bool:
+    """Merge `changes` into one manifest entry and write it back.
+
+    Reads the manifest immediately before writing - not once, cached, and
+    reused across a long operation - so a change some other request made to a
+    DIFFERENT entry in between (e.g. a Remove while this contract_id's
+    extraction was still running) is preserved rather than clobbered by a
+    stale snapshot. This is the fix for the resurrection bug: api_upload used
+    to read the manifest once before a 60-75s extraction call and write that
+    same dict back afterwards, silently reverting every manifest change made
+    while it ran (including removals: unlinked files and deleted DB rows
+    stayed gone, but the manifest entry came back, and the next reseed would
+    have recreated a contracts row for it).
+
+    Returns False, writing nothing, if `contract_id` is no longer present in
+    the manifest - which happens when the user removes the very upload this
+    call is trying to update while it is still being processed. Re-adding
+    the entry in that case would be the identical bug in a different
+    costume: silently overriding an explicit removal because this call
+    started before it. Callers must treat a False return as "this upload no
+    longer exists, stop processing it" rather than force the entry back."""
+    manifest = read_manifest()
+    entry = manifest["entries"].get(contract_id)
+    if entry is None:
+        return False
+    entry.update(changes)
+    write_manifest(manifest)
+    return True
+
+
 def remove(contract_id: str) -> bool:
     """Delete an upload's file and manifest entry. Returns False for an
     unknown id rather than raising, so callers can treat it as a no-op."""

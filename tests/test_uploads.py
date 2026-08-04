@@ -1295,3 +1295,131 @@ def test_upload_does_not_block_the_event_loop(clean_uploads, monkeypatch):
         "immediately if the upload's blocking work is off the event loop"
     )
     assert upload_result.get("status") == 200
+
+
+# ---------------------------------------------------------------------------
+# A long-running upload must not revert manifest changes made while it ran
+# ---------------------------------------------------------------------------
+#
+# api_upload used to read the manifest once, run extraction for 60-75s, and
+# write that same now-stale dict back afterwards - silently reverting any
+# manifest change (e.g. a Remove of a DIFFERENT upload) made in between. Both
+# tests below block extraction on an Event so a manifest write can be
+# performed mid-flight, deterministically, without sleeping through the real
+# extraction window.
+
+
+def _upload_blocked_on_extraction(monkeypatch):
+    """Patch extraction.extract_one to block until released, returning the
+    (reached_extraction, release_extraction) events and the real function."""
+    from app.agents import extraction as extraction_module
+
+    reached_extraction = threading.Event()
+    release_extraction = threading.Event()
+    original_extract_one = extraction_module.extract_one
+
+    def blocking_extract_one(contract_id, text):
+        reached_extraction.set()
+        release_extraction.wait(timeout=10)
+        return original_extract_one(contract_id, text)
+
+    monkeypatch.setattr(extraction_module, "extract_one", blocking_extract_one)
+    monkeypatch.setenv("PACT_LLM_MODE", "offline")
+    return reached_extraction, release_extraction
+
+
+def test_removal_of_another_upload_survives_a_concurrent_uploads_completion(
+    clean_uploads, monkeypatch
+):
+    """The core regression: while upload A's extraction is still running,
+    upload B (already on disk) is removed. A's eventual manifest write must
+    not resurrect B."""
+    reached_extraction, release_extraction = _upload_blocked_on_extraction(monkeypatch)
+
+    other_id, _, _ = uploads.store("other.txt", _txt("VENDOR: Other Corp"))
+    assert other_id in uploads.read_manifest()["entries"]
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
+    upload_result: dict = {}
+
+    with TestClient(app) as client:
+
+        def do_upload():
+            resp = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+            upload_result["status"] = resp.status_code
+            upload_result["body"] = resp.json()
+
+        upload_thread = threading.Thread(target=do_upload)
+        upload_thread.start()
+        assert reached_extraction.wait(timeout=10), "upload never reached extraction"
+
+        # Made WHILE the slow upload is still inside extraction.
+        remove_resp = client.post(f"/api/uploads/{other_id}/remove")
+        assert remove_resp.status_code == 200
+
+        release_extraction.set()
+        upload_thread.join(timeout=10)
+
+    assert upload_result.get("status") == 200
+    new_id = upload_result["body"]["contract_id"]
+
+    manifest = uploads.read_manifest()
+    assert other_id not in manifest["entries"], (
+        "removing a different upload mid-flight was reverted when the slow "
+        "upload finished and wrote its stale manifest snapshot back"
+    )
+    assert new_id in manifest["entries"], "the slow upload's own entry must still be recorded"
+    assert not (config.UPLOAD_DIR / f"{other_id}.txt").exists()
+    from app.tools import dataset_tools
+    assert dataset_tools.fetch_contract(other_id) is None
+
+
+def test_removing_the_in_flight_upload_itself_is_not_resurrected(clean_uploads, monkeypatch):
+    """If the user removes the very upload that is still extracting - visible
+    on the dashboard as soon as uploads.store() commits, well before
+    extraction finishes - the route must not silently re-add it when
+    extraction completes. Silently resurrecting it would be the same class
+    of bug as the cross-entry case, just aimed at the entry's own removal."""
+    reached_extraction, release_extraction = _upload_blocked_on_extraction(monkeypatch)
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
+    upload_result: dict = {}
+
+    with TestClient(app) as client:
+
+        def do_upload():
+            resp = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+            upload_result["status"] = resp.status_code
+
+        upload_thread = threading.Thread(target=do_upload)
+        upload_thread.start()
+        assert reached_extraction.wait(timeout=10), "upload never reached extraction"
+
+        entries = uploads.read_manifest()["entries"]
+        assert entries, "the in-flight upload's own entry should already be in the manifest"
+        in_flight_id = next(iter(entries))
+
+        remove_resp = client.post(f"/api/uploads/{in_flight_id}/remove")
+        assert remove_resp.status_code == 200
+
+        release_extraction.set()
+        upload_thread.join(timeout=10)
+
+    # The upload request itself must report failure (nothing usable came of
+    # an upload the user deleted out from under it), not a silent success.
+    assert upload_result.get("status") == 500
+
+    manifest = uploads.read_manifest()
+    assert in_flight_id not in manifest["entries"], (
+        "removing the in-flight upload's own entry must not be undone when "
+        "its extraction later completes"
+    )
+    assert not (config.UPLOAD_DIR / f"{in_flight_id}.txt").exists()
+    from app.tools import dataset_tools
+    assert dataset_tools.fetch_contract(in_flight_id) is None
