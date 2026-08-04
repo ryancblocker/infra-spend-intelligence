@@ -162,6 +162,12 @@ def run_pipeline(event_queue: "queue_module.Queue | None" = None) -> PipelineSta
             for node_name, node_output in chunk.items():
                 final_state.update(node_output)
                 emit(event_queue, node_name, "completed", _detail_for(node_name, node_output))
+    except Exception as exc:
+        # Emitted here (not by the caller) so it lands on the queue before
+        # DONE_SENTINEL - a caller reacting to the exception after this
+        # function returns would already be too late to order it correctly.
+        emit(event_queue, "pipeline", "error", f"{type(exc).__name__}: {exc}")
+        raise
     finally:
         emit_done(event_queue)
     return final_state

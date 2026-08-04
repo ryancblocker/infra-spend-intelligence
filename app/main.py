@@ -25,7 +25,7 @@ from starlette.requests import Request  # noqa: E402
 from app import config, views  # noqa: E402
 from app.data import seed_db  # noqa: E402
 from app.orchestrator import persistence  # noqa: E402
-from app.orchestrator.events import DONE_SENTINEL, new_queue  # noqa: E402
+from app.orchestrator.events import DONE_SENTINEL, emit, emit_done, new_queue  # noqa: E402
 from app.orchestrator.graph import run_pipeline  # noqa: E402
 from app.orchestrator.state import PipelineState  # noqa: E402
 from app.tools import dataset_tools, vector_store  # noqa: E402
@@ -170,12 +170,34 @@ async def _execute_pipeline(q: "queue_module.Queue") -> None:
     (client timeout, closed tab) must not orphan a run mid-flight: real
     compute already spent calling the LLM would be silently wasted, and the
     lock would release while the run kept executing, letting a second run
-    start and pile onto the same model instance."""
+    start and pile onto the same model instance.
+
+    A pipeline-wide timeout guards the same lock against a genuinely hung
+    run (observed for real: a local model slow enough to blow its own
+    per-call timeout on every attempt). asyncio.to_thread's underlying
+    thread can't actually be killed once it's running, so a timed-out run
+    keeps burning CPU in the background - but since nothing here still
+    awaits it, its result is simply never touched: no stale save, no lock
+    left held.
+    """
     global _LAST_RUN
     try:
-        final_state = await asyncio.to_thread(run_pipeline, q)
+        final_state = await asyncio.wait_for(
+            asyncio.to_thread(run_pipeline, q), timeout=config.PIPELINE_TIMEOUT_SECONDS
+        )
         _LAST_RUN = final_state
         persistence.save_run(final_state)
+    except asyncio.TimeoutError:
+        # The orphaned run's own DONE_SENTINEL may arrive arbitrarily late
+        # (or never) - event_stream() needs its own to stop waiting now.
+        emit(q, "pipeline", "error",
+             f"Run timed out after {config.PIPELINE_TIMEOUT_SECONDS:.0f}s")
+        emit_done(q)
+    except Exception:
+        # run_pipeline() already emitted its own error event and
+        # DONE_SENTINEL (in the correct order) before this exception
+        # reached us - nothing left to do but skip the save.
+        pass
     finally:
         _RUN_LOCK.release()
 
@@ -189,12 +211,15 @@ async def api_run():
     asyncio.create_task(_execute_pipeline(q))
 
     async def event_stream():
+        ok = True
         while True:
             item = await asyncio.to_thread(q.get)
             if isinstance(item, str) and item == DONE_SENTINEL:
                 break
+            if item.status == "error":
+                ok = False
             yield item.to_sse()
-        yield f"event: result\ndata: {json.dumps({'ok': True})}\n\n"
+        yield f"event: result\ndata: {json.dumps({'ok': ok})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                               headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

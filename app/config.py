@@ -46,6 +46,11 @@ LOW_SAVINGS_THRESHOLD = 10_000
 MAX_EXTRACTION_ITERS = int(os.environ.get("PACT_MAX_EXTRACTION_ITERS", "3"))
 MAX_REVISIONS = int(os.environ.get("PACT_MAX_REVISIONS", "1"))
 LLM_TIMEOUT_SECONDS = float(os.environ.get("PACT_LLM_TIMEOUT", "120"))
+# Ceiling on the whole pipeline run, not just one LLM call - a slow local
+# model can burn its full per-call timeout on every one of ~15 contracts
+# across multiple extraction iterations and still never truly hang, so this
+# needs enough headroom to not falsely kill a legitimately slow real run.
+PIPELINE_TIMEOUT_SECONDS = float(os.environ.get("PACT_PIPELINE_TIMEOUT", "600"))
 
 # --- Retrieval ---
 RETRIEVAL_K = int(os.environ.get("PACT_RETRIEVAL_K", "3"))

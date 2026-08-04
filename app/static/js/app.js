@@ -64,10 +64,14 @@ function pipelineRunner() {
         }
         this.log.unshift(`${data.label}: ${data.detail}`);
       };
-      source.addEventListener("result", () => {
+      source.addEventListener("result", (evt) => {
         source.close();
         this.running = false;
-        window.location.reload();
+        // Only reload on success - a failed run has nothing new to show,
+        // and reloading would wipe the error line just added to this.log.
+        if (JSON.parse(evt.data).ok) {
+          window.location.reload();
+        }
       });
       source.onerror = () => {
         source.close();
