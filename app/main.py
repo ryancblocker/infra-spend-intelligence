@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import queue as queue_module
 import sys
 import threading
 from pathlib import Path
@@ -130,6 +131,23 @@ def ask_page(request: Request):
     return templates.TemplateResponse(request, "ask.html", ctx)
 
 
+@app.get("/runs", response_class=HTMLResponse)
+def runs_page(request: Request):
+    ctx = _base_context(request)
+    ctx["runs"] = persistence.list_runs()
+    return templates.TemplateResponse(request, "runs.html", ctx)
+
+
+@app.get("/runs/{run_id}", response_class=HTMLResponse)
+def run_detail_page(request: Request, run_id: str):
+    detail = views.run_detail_view(run_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    ctx = _base_context(request)
+    ctx.update(detail)
+    return templates.TemplateResponse(request, "run_detail.html", ctx)
+
+
 # ---------------------------------------------------------------------------
 # API
 # ---------------------------------------------------------------------------
@@ -141,28 +159,42 @@ def api_status():
             "summary": _LAST_RUN["summary"].model_dump(mode="json") if _LAST_RUN.get("summary") else None}
 
 
+@app.get("/api/runs")
+def api_runs():
+    return {"runs": persistence.list_runs()}
+
+
+async def _execute_pipeline(q: "queue_module.Queue") -> None:
+    """Owns the pipeline's actual lifecycle - runs independently of whichever
+    client's SSE connection happens to be watching it. A dropped connection
+    (client timeout, closed tab) must not orphan a run mid-flight: real
+    compute already spent calling the LLM would be silently wasted, and the
+    lock would release while the run kept executing, letting a second run
+    start and pile onto the same model instance."""
+    global _LAST_RUN
+    try:
+        final_state = await asyncio.to_thread(run_pipeline, q)
+        _LAST_RUN = final_state
+        persistence.save_run(final_state)
+    finally:
+        _RUN_LOCK.release()
+
+
 @app.get("/api/run")
 async def api_run():
     if not _RUN_LOCK.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="A pipeline run is already in progress")
 
-    async def event_stream():
-        try:
-            q = new_queue()
-            task = asyncio.create_task(asyncio.to_thread(run_pipeline, q))
-            while True:
-                item = await asyncio.to_thread(q.get)
-                if isinstance(item, str) and item == DONE_SENTINEL:
-                    break
-                yield item.to_sse()
+    q = new_queue()
+    asyncio.create_task(_execute_pipeline(q))
 
-            final_state = await task
-            global _LAST_RUN
-            _LAST_RUN = final_state
-            persistence.save_run(final_state)
-            yield f"event: result\ndata: {json.dumps({'ok': True})}\n\n"
-        finally:
-            _RUN_LOCK.release()
+    async def event_stream():
+        while True:
+            item = await asyncio.to_thread(q.get)
+            if isinstance(item, str) and item == DONE_SENTINEL:
+                break
+            yield item.to_sse()
+        yield f"event: result\ndata: {json.dumps({'ok': True})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                               headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

@@ -65,7 +65,7 @@
 
 {% if summary %}
 <div class="card" style="margin-bottom:24px;">
-  <div class="section-title">Executive Summary <span class="badge badge-neutral" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
+  <div class="section-title">Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
   <p style="font-size:15px; line-height:1.6; margin:0;">{{ summary.executive_summary }}</p>
   {% if critic_flags %}
   <div style="margin-top:14px;">

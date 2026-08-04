@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Run History{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Run History</h1>
+    <p class="page-subtitle">{{ runs | length }} completed pipeline run{{ "s" if runs | length != 1 else "" }}, newest first.</p>
+  </div>
+</div>
+
+{% if runs %}
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Run</th>
+        <th>Mode</th>
+        <th>Total Annual Spend</th>
+        <th>Potential Savings</th>
+        <th>Findings</th>
+        <th>High Renewal Risk</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr>
+        <td><a class="row-link" href="/runs/{{ r.run_id }}">{{ r.timestamp[:19].replace("T", " ") }}</a></td>
+        <td><span class="badge badge-{{ 'good' if r.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ r.llm_mode }}</span></td>
+        <td class="figures">{{ r.total_annual_spend | money }}</td>
+        <td class="figures">{{ r.total_potential_annual_savings | money }}</td>
+        <td>{{ r.number_of_findings }}</td>
+        <td>{{ r.high_risk_contracts }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No runs yet. Run the pipeline from the Overview page to start building history.</div>
+{% endif %}
+
+{% endblock %}

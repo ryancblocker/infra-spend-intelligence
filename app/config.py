@@ -17,6 +17,7 @@ CONTRACT_DOCS_DIR = DATA_DIR / "contract_docs"
 RUNTIME_DIR = BASE_DIR / "runtime"
 DB_PATH = RUNTIME_DIR / "pact.db"
 VECTOR_STORE_DIR = RUNTIME_DIR / "vector_store"
+RUNS_DIR = RUNTIME_DIR / "runs"
 
 STATIC_DIR = APP_DIR / "static"
 TEMPLATES_DIR = APP_DIR / "templates"
@@ -70,3 +71,4 @@ EXTRACTION_CACHE_ENABLED = os.environ.get("PACT_EXTRACTION_CACHE", "1") != "0"
 def ensure_runtime_dirs() -> None:
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
     VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)

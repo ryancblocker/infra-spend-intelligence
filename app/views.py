@@ -7,6 +7,7 @@ findings" logic in one place.
 
 from __future__ import annotations
 
+from app.orchestrator import persistence
 from app.orchestrator.state import PipelineState
 from app.tools import dataset_tools
 
@@ -86,3 +87,16 @@ def findings_view(state: PipelineState) -> dict:
 
 def scenarios_view(state: PipelineState) -> list:
     return sorted(state.get("scenarios", []), key=lambda s: s.estimated_annual_savings, reverse=True)
+
+
+def run_detail_view(run_id: str) -> dict | None:
+    state = persistence.load_run(run_id)
+    if state is None:
+        return None
+    return {
+        "run_id": run_id,
+        "summary": state.get("summary"),
+        "top_scenarios": sorted(state.get("scenarios", []), key=lambda s: s.estimated_annual_savings, reverse=True)[:10],
+        "renewal_risks": sorted(state.get("renewal_risks", []), key=lambda r: r.days_remaining)[:10],
+        "critic_flags": state.get("critic_flags", []),
+    }

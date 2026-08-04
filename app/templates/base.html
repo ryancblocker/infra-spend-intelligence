@@ -24,6 +24,7 @@
       <a class="nav-link {% if request.url.path == '/findings' %}active{% endif %}" href="/findings">Findings</a>
       <a class="nav-link {% if request.url.path == '/scenarios' %}active{% endif %}" href="/scenarios">Scenarios</a>
       <a class="nav-link {% if request.url.path == '/ask' %}active{% endif %}" href="/ask">Ask PACT</a>
+      <a class="nav-link {% if request.url.path.startswith('/runs') %}active{% endif %}" href="/runs">Run History</a>
 
       <div class="nav-footer">
         <button class="theme-toggle" onclick="pactToggleTheme()">Toggle theme</button>

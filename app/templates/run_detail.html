@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Run {{ run_id }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Run {{ run_id }}</h1>
+    <p class="page-subtitle"><a class="row-link" href="/runs">&larr; Back to Run History</a></p>
+  </div>
+</div>
+
+{% if summary %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Total Annual Spend</div>
+    <div class="kpi-value figures">{{ summary.total_annual_spend | money }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Potential Annual Savings</div>
+    <div class="kpi-value accent figures">{{ summary.total_potential_annual_savings | money }}</div>
+    <div class="kpi-sub">{{ summary.number_of_findings }} findings identified</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">High Renewal Risk</div>
+    <div class="kpi-value figures">{{ summary.high_risk_contracts }}</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:24px;">
+  <div class="section-title">Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
+  <p style="font-size:15px; line-height:1.6; margin:0;">{{ summary.executive_summary }}</p>
+  {% if critic_flags %}
+  <div style="margin-top:14px;">
+    <div class="section-title">Critic Flags</div>
+    {% for f in critic_flags[:5] %}
+    <div class="flag-row">
+      <span class="badge badge-{{ 'critical' if f.severity == 'error' else ('warning' if f.severity == 'warning' else 'neutral') }}">{{ f.severity }}</span>
+      <span>{{ f.message }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="section-title">Top Savings Opportunities</div>
+    {% if top_scenarios %}
+      {% for s in top_scenarios %}
+      <div class="feed-row">
+        <div>
+          <div class="feed-title">{{ s.recommended_action }} &middot; {{ s.asset_id }}</div>
+          <div class="feed-meta">{{ s.issue }}</div>
+        </div>
+        <div class="feed-value savings figures">{{ s.estimated_annual_savings | money }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">No scenarios in this run.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="section-title">Renewal Risk</div>
+    {% if renewal_risks %}
+      {% for r in renewal_risks %}
+      <div class="feed-row">
+        <div>
+          <div class="feed-title">{{ r.contract_label }}</div>
+          <div class="feed-meta">{{ r.days_remaining }} days remaining</div>
+        </div>
+        <span class="badge badge-{{ 'critical' if r.risk == 'HIGH' else ('warning' if r.risk == 'MEDIUM' else 'good') }}">
+          <span class="badge-dot"></span>{{ r.risk }}
+        </span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">No renewal risk data in this run.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<div class="empty-state">This run has no summary data.</div>
+{% endif %}
+
+{% endblock %}
