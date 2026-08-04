@@ -357,6 +357,12 @@ async def api_upload(file: UploadFile = File(...)):
     return {
         "contract_id": contract_id,
         "vendor": record.vendor,
+        # The uploader needs to recognise their own file in the list. Vendor is
+        # the natural label, but a weak extraction leaves it empty - and a row
+        # showing nothing but "U-0023" is unidentifiable to the person who just
+        # dragged a file in. The template already falls back to this; the JS
+        # that inserts the row live could not, because the payload lacked it.
+        "original_filename": uploads.safe_basename(file.filename or "upload"),
         "renewal_date": record.renewal_date,
         "extraction_source": record.extraction_source,
         # The spec keeps a file whose extraction recovered little - but says so,

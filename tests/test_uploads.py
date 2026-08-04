@@ -1423,3 +1423,25 @@ def test_removing_the_in_flight_upload_itself_is_not_resurrected(clean_uploads, 
     assert not (config.UPLOAD_DIR / f"{in_flight_id}.txt").exists()
     from app.tools import dataset_tools
     assert dataset_tools.fetch_contract(in_flight_id) is None
+
+
+def test_upload_response_carries_the_original_filename(client):
+    """Vendor is the natural row label, but a weak extraction leaves it empty and
+    a row reading only "U-0001" tells the uploader nothing about which file it
+    was. The template already falls back to the filename; the payload has to
+    carry it so the JS that inserts the row live can fall back the same way."""
+    body = b"VENDOR: \nThis Agreement continues through 2026-12-31.\n" + b"padding. " * 40
+    payload = client.post(
+        "/api/upload", files={"file": ("Northwind-MSA.txt", body, "text/plain")}
+    ).json()
+    assert payload["original_filename"] == "Northwind-MSA.txt"
+
+
+def test_upload_response_filename_is_sanitized(client):
+    """It is rendered in the UI, so it must be the sanitized basename - not the
+    raw client-supplied path."""
+    body = b"VENDOR: Acme\nThis Agreement continues through 2026-12-31.\n" + b"padding. " * 40
+    payload = client.post(
+        "/api/upload", files={"file": ("../../etc/passwd.txt", body, "text/plain")}
+    ).json()
+    assert payload["original_filename"] == "passwd.txt"

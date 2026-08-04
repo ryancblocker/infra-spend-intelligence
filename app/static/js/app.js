@@ -261,7 +261,10 @@ window.askChat = askChat;
     link.textContent = payload.contract_id;
     const vendor = document.createElement("span");
     vendor.className = "upload-vendor";
-    vendor.textContent = payload.vendor || "";
+    // Fall back to the filename, matching mission_control.html. A weak
+    // extraction leaves vendor empty, and a row labelled only "U-0023" tells
+    // the person who just uploaded a file nothing about which file it was.
+    vendor.textContent = payload.vendor || payload.original_filename || "";
     const renewal = document.createElement("span");
     renewal.className = "upload-renewal";
     renewal.textContent = payload.renewal_date || "";
