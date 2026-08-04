@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -43,6 +44,7 @@ templates.env.filters["money"] = lambda v: f"${v:,.0f}" if v is not None else "N
 templates.env.filters["money2"] = lambda v: f"${v:,.2f}" if v is not None else "N/A"
 
 _LAST_RUN: PipelineState = {}
+_RUN_LOCK = threading.Lock()
 
 
 @app.on_event("startup")
@@ -141,20 +143,26 @@ def api_status():
 
 @app.get("/api/run")
 async def api_run():
-    async def event_stream():
-        q = new_queue()
-        task = asyncio.create_task(asyncio.to_thread(run_pipeline, q))
-        while True:
-            item = await asyncio.to_thread(q.get)
-            if isinstance(item, str) and item == DONE_SENTINEL:
-                break
-            yield item.to_sse()
+    if not _RUN_LOCK.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="A pipeline run is already in progress")
 
-        final_state = await task
-        global _LAST_RUN
-        _LAST_RUN = final_state
-        persistence.save_run(final_state)
-        yield f"event: result\ndata: {json.dumps({'ok': True})}\n\n"
+    async def event_stream():
+        try:
+            q = new_queue()
+            task = asyncio.create_task(asyncio.to_thread(run_pipeline, q))
+            while True:
+                item = await asyncio.to_thread(q.get)
+                if isinstance(item, str) and item == DONE_SENTINEL:
+                    break
+                yield item.to_sse()
+
+            final_state = await task
+            global _LAST_RUN
+            _LAST_RUN = final_state
+            persistence.save_run(final_state)
+            yield f"event: result\ndata: {json.dumps({'ok': True})}\n\n"
+        finally:
+            _RUN_LOCK.release()
 
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                               headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
