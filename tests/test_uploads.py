@@ -452,6 +452,38 @@ def test_upsert_is_idempotent():
     dataset_tools.delete_upload_row("U-0102")
 
 
+def test_upsert_labels_the_row_with_the_filename_when_vendor_is_empty():
+    """A weak extraction that recovers no vendor must not leave the row reading
+    'Unknown vendor' if the caller can supply the filename the person actually
+    uploaded - that's the only thing left that identifies the row as theirs."""
+    record = _sample_record("U-0104").model_copy(update={"vendor": ""})
+    dataset_tools.upsert_upload_row(record, "Northwind-MSA.txt")
+    row = dataset_tools.fetch_contract("U-0104")
+    assert row["vendor"] == "Northwind-MSA.txt"
+    dataset_tools.delete_upload_row("U-0104")
+
+
+def test_upsert_prefers_the_extracted_vendor_over_the_filename():
+    """The filename is a fallback, not a replacement - a real extracted vendor
+    must win even when a filename is also supplied."""
+    record = _sample_record("U-0106")  # vendor="Acme Corp"
+    dataset_tools.upsert_upload_row(record, "some-random-file.txt")
+    row = dataset_tools.fetch_contract("U-0106")
+    assert row["vendor"] == "Acme Corp"
+    dataset_tools.delete_upload_row("U-0106")
+
+
+def test_upsert_falls_back_to_unknown_vendor_without_a_filename():
+    """No filename and no extracted vendor: the original placeholder survives,
+    so call sites that predate this parameter (or genuinely have no filename
+    to give) behave exactly as before."""
+    record = _sample_record("U-0105").model_copy(update={"vendor": ""})
+    dataset_tools.upsert_upload_row(record)
+    row = dataset_tools.fetch_contract("U-0105")
+    assert row["vendor"] == "Unknown vendor"
+    dataset_tools.delete_upload_row("U-0105")
+
+
 def test_delete_removes_the_row():
     dataset_tools.upsert_upload_row(_sample_record("U-0103"))
     dataset_tools.delete_upload_row("U-0103")
@@ -477,6 +509,34 @@ def test_reseed_rehydrates_uploads_from_the_manifest(clean_uploads):
     row = dataset_tools.fetch_contract("U-0201")
     assert row is not None, "a reseed must not lose uploaded contracts"
     assert row["source"] == "upload"
+
+
+def test_reseed_relabels_a_vendor_less_upload_with_its_filename(clean_uploads):
+    """Rehydration is also how an *existing* vendor-less row (created before
+    this fix, or by a prior version of the app) picks up the filename label -
+    it goes through the exact same upsert_upload_row() call as a live upload,
+    just with the terms already on file in the manifest rather than freshly
+    extracted. This is the only path that fixes an already-stored 'Unknown
+    vendor' row without the user re-uploading: it runs on every server
+    startup (see main.py's on_startup) and on every explicit reseed."""
+    (clean_uploads / "U-0202.txt").write_text("no vendor line in this document\n", encoding="utf-8")
+    uploads.write_manifest({
+        "next_id": 203,
+        "entries": {
+            "U-0202": {
+                "contract_id": "U-0202",
+                "original_filename": "Northwind-MSA.txt",
+                "stored_filename": "U-0202.txt",
+                "terms": _sample_record("U-0202").model_dump(mode="json") | {"vendor": ""},
+            },
+        },
+    })
+
+    seed_db.build_database()
+
+    row = dataset_tools.fetch_contract("U-0202")
+    assert row is not None
+    assert row["vendor"] == "Northwind-MSA.txt"
 
 
 def test_corrupt_manifest_does_not_break_a_reseed(clean_uploads, capsys):
@@ -529,6 +589,26 @@ def test_upload_txt_returns_a_contract_id(client):
     payload = response.json()
     assert payload["contract_id"] == "U-0001"
     assert payload["vendor"] == "Acme Corp"
+
+
+def test_upload_with_no_vendor_labels_the_contracts_row_with_the_filename(client):
+    """End-to-end version of the dataset_tools unit tests above: a document
+    with no VENDOR: line leaves extraction.vendor empty, and the row that
+    lands in the contracts table (what /contracts and the detail page render)
+    must read the original filename, not the old 'Unknown vendor' placeholder
+    that told the uploader nothing about which document the row was."""
+    body = _txt("This Agreement continues through 2026-12-31.")
+    response = client.post(
+        "/api/upload", files={"file": ("Northwind-MSA.txt", body, "text/plain")}
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["vendor"] == ""  # extraction genuinely found nothing
+
+    from app.tools import dataset_tools
+    row = dataset_tools.fetch_contract(payload["contract_id"])
+    assert row["vendor"] == "Northwind-MSA.txt"
+    assert row["vendor"] != "Unknown vendor"
 
 
 def test_upload_creates_a_contracts_row(client):

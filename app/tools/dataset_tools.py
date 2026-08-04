@@ -116,12 +116,25 @@ def ensure_source_column() -> None:
             conn.commit()
 
 
-def upsert_upload_row(record) -> None:
+def upsert_upload_row(record, original_filename: str = "") -> None:
     """Insert or replace the contracts row derived from an uploaded document.
 
     Only the columns an actual contract document can support are populated.
     Utilization-derived columns stay NULL - see the waste agent, which reports
     uploads as unavailable rather than inventing numbers for them.
+
+    original_filename is optional and comes from the upload manifest, not the
+    ExtractedContract record itself (extraction never sees a filename). When
+    extraction recovers no vendor, the row is labelled with that filename
+    instead of a bare "Unknown vendor" placeholder, so the person who
+    uploaded the document can still recognise which row is theirs - the same
+    fallback the upload card and its live-added row already use (see
+    app.js's addRow and mission_control.html's upload list). The row is
+    already flagged low_confidence in the UI whenever this fallback applies,
+    so labelling it with the filename asserts nothing about who the vendor
+    actually is. "Unknown vendor" remains the fallback when no filename is
+    available either - e.g. a record built directly by a test or by
+    seed_db's rehydration before this parameter existed.
 
     owner is set to the "Uploaded" placeholder below purely so list/detail
     views have something to display - it is not load-bearing for correctness.
@@ -130,6 +143,7 @@ def upsert_upload_row(record) -> None:
     placeholder later will not resurrect a fabricated contract_owner_gap
     finding for a document that never had utilization telemetry."""
     ensure_source_column()
+    vendor = record.vendor or original_filename or "Unknown vendor"
     with connection() as conn:
         conn.execute("DELETE FROM contracts WHERE contract_id = ?", (record.contract_id,))
         conn.execute(
@@ -140,7 +154,7 @@ def upsert_upload_row(record) -> None:
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'upload')""",
             (
                 record.contract_id,
-                record.vendor or "Unknown vendor",
+                vendor,
                 record.category or "Uploaded contract",
                 "",
                 record.renewal_date or "",

@@ -266,6 +266,10 @@ async def api_upload(file: UploadFile = File(...)):
     from app.tools.uploads import ManifestError, UploadTooLarge
 
     data = await file.read()
+    # Computed once, up front, and reused below both for the DB row's vendor
+    # fallback and the response payload - same sanitized name either way,
+    # rather than two independent calls that could theoretically drift.
+    original_filename = uploads.safe_basename(file.filename or "upload")
     try:
         contract_id, path, text = uploads.store(file.filename or "upload", data)
     except UploadTooLarge as exc:
@@ -343,7 +347,7 @@ async def api_upload(file: UploadFile = File(...)):
             raise _UploadRemovedDuringProcessing(
                 f"upload {contract_id} was removed while it was still processing"
             )
-        dataset_tools.upsert_upload_row(record)
+        dataset_tools.upsert_upload_row(record, original_filename)
     except Exception as exc:
         # A failed upload must leave no trace: no orphaned file under either
         # name, no stale manifest entry, no contracts row for an id nothing
@@ -362,7 +366,7 @@ async def api_upload(file: UploadFile = File(...)):
         # showing nothing but "U-0023" is unidentifiable to the person who just
         # dragged a file in. The template already falls back to this; the JS
         # that inserts the row live could not, because the payload lacked it.
-        "original_filename": uploads.safe_basename(file.filename or "upload"),
+        "original_filename": original_filename,
         "renewal_date": record.renewal_date,
         "extraction_source": record.extraction_source,
         # The spec keeps a file whose extraction recovered little - but says so,

@@ -88,7 +88,7 @@ def rehydrate_uploads() -> int:
         terms = entry.get("terms")
         if not terms:
             continue
-        dataset_tools.upsert_upload_row(ExtractedContract(**terms))
+        dataset_tools.upsert_upload_row(ExtractedContract(**terms), entry.get("original_filename", ""))
         restored += 1
 
     for orphan_id in dataset_tools.fetch_upload_ids() - set(entries):
