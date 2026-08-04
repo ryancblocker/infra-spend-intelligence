@@ -40,6 +40,14 @@
         <span class="badge badge-{{ 'critical' if extracted.risk_level == 'High' else ('warning' if extracted.risk_level == 'Medium' else 'good') }}">{{ extracted.risk_level }}</span>
       </p>
       <p style="font-size:13.5px; color:var(--ink-secondary);">{{ extracted.risk_rationale }}</p>
+      {% if extracted.extraction_source == 'offline' and summary and summary.llm_mode != 'offline' %}
+        <p style="font-size:12.5px; color:var(--ink-muted);">
+          This run was LLM-backed ({{ summary.llm_mode }}), but the model didn't produce
+          usable output for this contract after {{ extracted.extraction_iterations }}
+          attempt{{ 's' if extracted.extraction_iterations != 1 else '' }} &mdash; falling back
+          to pattern-based extraction instead of guessing.
+        </p>
+      {% endif %}
       {% if extracted.injection_flags %}
         <div class="injection-warning">
           <strong>Instruction-like text detected in this document.</strong>
@@ -97,7 +105,11 @@
         </div>
       </details>
     {% else %}
-      <div class="empty-state">No source contract document for this agreement, or the pipeline hasn't run yet.</div>
+      {% if not has_run %}
+        <div class="empty-state">The pipeline hasn't run yet &mdash; click "Run Analysis" from the Overview page.</div>
+      {% else %}
+        <div class="empty-state">No source document on file for this contract &mdash; extraction only runs on contracts with prose to read.</div>
+      {% endif %}
     {% endif %}
   </div>
 
@@ -117,7 +129,10 @@
   {% for s in scenarios %}
   <div class="feed-row">
     <div>
-      <div class="feed-title">{{ s.recommended_action }} · {{ s.asset_id }}</div>
+      <div class="feed-title">{{ s.recommended_action }} · {{ s.asset_id }}
+        <span class="badge badge-{{ 'good' if s.source.split('-')[0] in ('ollama', 'anthropic') else 'neutral' }}"
+              style="text-transform:none; font-size:10px; padding:1px 6px;" title="How this recommendation was judged">{{ s.source }}</span>
+      </div>
       <div class="feed-meta">{{ s.issue }}</div>
       {% if s.negotiation_talking_points %}
       <div class="feed-meta" style="margin-top:4px;">💬 {{ s.negotiation_talking_points | join(' · ') }}</div>
