@@ -1185,13 +1185,15 @@ def test_mission_control_flags_a_low_confidence_upload(client):
     client.post("/api/upload",
                 files={"file": ("realistic.txt", REALISTIC_CONTRACT.encode("utf-8"), "text/plain")})
     body = client.get("/").text
-    assert "could read very little" in body
+    # The flag is a quiet "partial" tag rather than a sentence, but it must still
+    # be present and still carry the explanation for anyone who looks.
+    assert "upload-partial" in body
     assert "may be incomplete" in body
 
 
 def test_mission_control_does_not_flag_a_readable_upload(client):
     client.post("/api/upload", files={"file": ("deal.txt", _txt(*READABLE_CONTRACT), "text/plain")})
-    assert "could read very little" not in client.get("/").text
+    assert "upload-partial" not in client.get("/").text
 
 
 def test_upload_status_message_surfaces_low_confidence():
@@ -1202,7 +1204,7 @@ def test_upload_status_message_surfaces_low_confidence():
         "app.js never reads payload.low_confidence, so a failed extraction is "
         "reported to the user as an ordinary success"
     )
-    assert "could read very little" in source
+    assert "upload-partial" in source
 
 
 def test_remove_with_corrupt_manifest_returns_500(client):

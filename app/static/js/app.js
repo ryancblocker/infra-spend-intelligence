@@ -206,11 +206,14 @@ window.askChat = askChat;
   const input = document.getElementById("upload-input");
   const status = document.getElementById("upload-status");
 
-  // Kept identical to the server-rendered wording in mission_control.html, so
+  // Kept identical to the server-rendered markup in mission_control.html, so
   // the row added live after an upload and the row rendered on the next page
-  // load say the same thing.
-  const LOW_CONFIDENCE_NOTE =
-    "We could read very little from this document - the extracted terms may be incomplete.";
+  // load say the same thing. A quiet tag rather than a sentence: the flag has
+  // to stay - a row where nothing was extracted must not look like a fully
+  // read one - but it does not need to shout on a dashboard.
+  const LOW_CONFIDENCE_LABEL = "partial";
+  const LOW_CONFIDENCE_TITLE =
+    "Little could be read from this document - the extracted terms may be incomplete.";
 
   function wireRemove(button) {
     button.addEventListener("click", async () => {
@@ -276,8 +279,9 @@ window.askChat = askChat;
     li.append(link, vendor, renewal, remove);
     if (payload.low_confidence) {
       const warning = document.createElement("span");
-      warning.className = "upload-warning";
-      warning.textContent = LOW_CONFIDENCE_NOTE;
+      warning.className = "upload-partial";
+      warning.textContent = LOW_CONFIDENCE_LABEL;
+      warning.title = LOW_CONFIDENCE_TITLE;
       li.append(warning);
     }
     list.appendChild(li);
@@ -367,10 +371,10 @@ window.askChat = askChat;
       status.append(idEl);
       if (payload.vendor) status.append(` - ${payload.vendor}`);
       status.append(". Re-run the analysis to include it.");
-      // A file we could barely read is not an ordinary success: say so here,
-      // where the user is looking, rather than only in the row below.
+      // A file we could barely read is not an ordinary success. The row carries
+      // the "partial" tag; here it is only a colour change, so the status line
+      // stays one clean sentence.
       if (payload.low_confidence) {
-        status.append(` ${LOW_CONFIDENCE_NOTE}`);
         status.classList.add("is-warning");
       } else {
         status.classList.add("is-ok");

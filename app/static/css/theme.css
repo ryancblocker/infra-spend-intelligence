@@ -741,12 +741,20 @@ tbody a.row-link:hover { color: var(--brand); }
 .upload-list a:hover { color: var(--brand); }
 .upload-vendor { color: var(--ink-secondary); }
 .upload-renewal { color: var(--ink-muted); font-size: 12px; }
-/* Spans the whole row rather than becoming a fifth grid column: the warning is
-   about the row, not another field in it. */
-.upload-warning {
-  grid-column: 1 / -1;
+/* A quiet tag, not a sentence. The flag has to stay - a row where almost
+   nothing was extracted must not read as a fully understood contract - but on
+   a dashboard it belongs as a marker next to the row, with the explanation on
+   hover, rather than a line of warning prose. */
+.upload-partial {
+  justify-self: start;
+  padding: 1px 6px;
+  border: 1px solid var(--status-warning);
+  border-radius: 999px;
   color: var(--status-warning);
-  font-size: 12px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: help;
 }
 
 /* Extraction has no notion of "percent done" - up to 3 agentic LLM passes
