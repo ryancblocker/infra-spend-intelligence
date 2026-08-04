@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from fastapi.templating import Jinja2Templates  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
+from starlette.concurrency import run_in_threadpool  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
 from app import config, views  # noqa: E402
@@ -284,7 +285,17 @@ async def api_upload(file: UploadFile = File(...)):
         # tuned to the seed generator's phrasing and reads almost nothing off a
         # real contract. Incremental, because build_index() re-embeds every
         # document in the corpus to add one.
-        vector_store.index_document(contract_id, text)
+        # Both calls below are blocking (an embedding HTTP call, then up to 3
+        # agentic LLM iterations at 16-27s each against Ollama) and must not
+        # run directly on the event loop - this function is `async def` only
+        # because it needs `await file.read()` above, so FastAPI schedules it
+        # on the loop itself rather than in Starlette's request threadpool.
+        # Without run_in_threadpool here, a single upload freezes every other
+        # request (including GET /) for the full duration of extraction -
+        # measured live at 61s. run_in_threadpool preserves the exact call
+        # signature and exceptions raised below; it only moves where the call
+        # runs, not the ordering or error handling around it.
+        await run_in_threadpool(vector_store.index_document, contract_id, text)
 
         # extract_one already applies reconcile_costs internally (Task 3), so
         # no second application is done here - that would just be a
@@ -293,7 +304,7 @@ async def api_upload(file: UploadFile = File(...)):
         # NOT an exception - extract_one handles that internally and still
         # returns a usable record. Rollback below is only for a genuine
         # exception (e.g. the LLM call itself blowing up).
-        record = extraction.extract_one(contract_id, text)
+        record = await run_in_threadpool(extraction.extract_one, contract_id, text)
         manifest["entries"][contract_id]["terms"] = record.model_dump(mode="json")
         uploads.write_manifest(manifest)
         dataset_tools.upsert_upload_row(record)

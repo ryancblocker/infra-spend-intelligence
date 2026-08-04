@@ -9,6 +9,8 @@ operators at all is exactly what a scan produces.
 from __future__ import annotations
 
 import re
+import threading
+import time
 
 import pytest
 
@@ -1214,3 +1216,82 @@ def test_an_uploaded_contract_with_a_prose_date_reaches_renewal_risk(monkeypatch
         assert any(r.contract_id == "U-0401" for r in risks)
     finally:
         dataset_tools.delete_upload_row("U-0401")
+
+
+def test_upload_does_not_block_the_event_loop(clean_uploads, monkeypatch):
+    """api_upload is declared `async def` (it needs `await file.read()`), which
+    means FastAPI runs its body directly on uvicorn's single event loop unless
+    the blocking work inside is explicitly offloaded. Two calls in the route -
+    vector_store.index_document (an embedding HTTP call) and
+    extraction.extract_one (up to 3 agentic LLM iterations, ~16-27s each in
+    real use against Ollama) - are synchronous and, before this fix, ran
+    straight on that loop. Measured live, a single upload froze the whole
+    server for 61s: a concurrent GET / did not even get a socket-level
+    response until the upload finished.
+
+    Route tests elsewhere all use PACT_LLM_MODE=offline, where extract_one
+    returns in ~0.03s, so the blocking never manifests there - this is the
+    only test that would catch a regression.
+
+    What this test proves: with extract_one patched to sleep, a concurrent
+    request issued while the upload is mid-flight is served (and the upload
+    is confirmed still running) rather than queueing behind it. It proves
+    this via TestClient used as a context manager (`with TestClient(app) as
+    client:`), which is required here - see starlette.testclient: a TestClient
+    used WITHOUT `with` spins up a brand-new anyio event-loop thread for every
+    individual request, which would silently give each concurrent call its own
+    loop and never exercise the shared-loop contention a real server has.
+    Entering the context manager makes the client reuse one persistent portal
+    (one event-loop thread) across both concurrent calls, mirroring uvicorn's
+    single worker.
+
+    What this test does NOT prove: real wall-clock timing against a live
+    Ollama, or behavior across multiple uvicorn worker processes (this app
+    runs the uvicorn default of one)."""
+    from app.agents import extraction as extraction_module
+
+    original_extract_one = extraction_module.extract_one
+    SLEEP_SECONDS = 1.5
+
+    def slow_extract_one(contract_id, text):
+        time.sleep(SLEEP_SECONDS)
+        return original_extract_one(contract_id, text)
+
+    monkeypatch.setattr(extraction_module, "extract_one", slow_extract_one)
+    monkeypatch.setenv("PACT_LLM_MODE", "offline")
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    body = _txt("VENDOR: Acme Corp", "This Agreement continues through 2026-12-31.")
+    upload_result: dict = {}
+
+    with TestClient(app) as client:
+
+        def do_upload():
+            resp = client.post("/api/upload", files={"file": ("deal.txt", body, "text/plain")})
+            upload_result["status"] = resp.status_code
+
+        upload_thread = threading.Thread(target=do_upload)
+        upload_thread.start()
+        time.sleep(SLEEP_SECONDS / 3)  # let the upload reach the patched sleep
+
+        t0 = time.monotonic()
+        status_resp = client.get("/api/status")
+        get_elapsed = time.monotonic() - t0
+        upload_still_running = upload_thread.is_alive()
+
+        upload_thread.join(timeout=SLEEP_SECONDS + 10)
+
+    assert status_resp.status_code == 200
+    assert upload_still_running, (
+        "the concurrent GET /api/status only completed after the upload "
+        "finished - the event loop is still blocked for the duration of "
+        "extraction, i.e. the upload route is not offloading its blocking work"
+    )
+    assert get_elapsed < SLEEP_SECONDS, (
+        f"GET /api/status took {get_elapsed:.2f}s while an upload was in flight "
+        f"(patched to sleep for {SLEEP_SECONDS}s); it should return almost "
+        "immediately if the upload's blocking work is off the event loop"
+    )
+    assert upload_result.get("status") == 200
