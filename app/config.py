@@ -63,6 +63,17 @@ MAX_EXTRACTION_ITERS = int(os.environ.get("PACT_MAX_EXTRACTION_ITERS", "3"))
 MAX_REVISIONS = int(os.environ.get("PACT_MAX_REVISIONS", "1"))
 LLM_TIMEOUT_SECONDS = float(os.environ.get("PACT_LLM_TIMEOUT", "120"))
 
+# The seed portfolio's findings do not change between runs, so re-deriving all
+# of their scenarios with the LLM every run is pure waste (see optimization's
+# scenario cache below). But a cold cache must still land inside the demo
+# budget on its own: measured at ~23s/call against qwen3:1.7b on this box,
+# 15 calls * 23s = 345s (~5.75 min) for the optimization pass, leaving
+# headroom under the 10-minute ceiling for the critic's review call, any
+# revision calls, and the narrator. Findings beyond this cap still get a
+# scenario - just via the deterministic rule engine, never dropped - and the
+# highest-impact findings (by estimated_annual_savings) are the ones chosen.
+MAX_LLM_SCENARIOS = int(os.environ.get("PACT_MAX_LLM_SCENARIOS", "15"))
+
 # --- Retrieval ---
 RETRIEVAL_K = int(os.environ.get("PACT_RETRIEVAL_K", "3"))
 # Chroma is pinned to squared-L2 (see vector_store.VECTOR_SPACE). On the unit-
@@ -82,6 +93,12 @@ RELEVANCE_FLOOR_EMBED = float(os.environ.get("PACT_RELEVANCE_FLOOR_EMBED", "1.50
 LLM_LOG_PATH = RUNTIME_DIR / "llm_calls.jsonl"
 EXTRACTION_CACHE_PATH = RUNTIME_DIR / "extraction_cache.json"
 EXTRACTION_CACHE_ENABLED = os.environ.get("PACT_EXTRACTION_CACHE", "1") != "0"
+# Same shape and rationale as the extraction cache above: the optimization
+# agent's LLM judgement for a given finding is a pure function of that
+# finding's identity and its (deterministically computed) cost projections, so
+# it is safe to reuse across runs rather than re-asking the model every time.
+SCENARIO_CACHE_PATH = RUNTIME_DIR / "scenario_cache.json"
+SCENARIO_CACHE_ENABLED = os.environ.get("PACT_SCENARIO_CACHE", "1") != "0"
 
 # Skip restoring a persisted run at startup, so the app opens on the welcome
 # screen with nothing calculated. Persistence itself stays on - this only

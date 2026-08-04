@@ -154,8 +154,10 @@ AGENT_PREVIEW = [
                         "or inactive mobile lines."),
     ("Benchmark Analysis", "Compares every rate against 2026 market benchmarks."),
     ("Renewal Intelligence", "Scores renewal risk against notice-period deadlines."),
-    ("Optimization Strategy", "Recommends keep, cancel or renegotiate. Dollar figures are computed "
-                              "deterministically; the model only supplies judgement."),
+    ("Optimization Strategy", "Recommends keep, cancel or renegotiate for every finding. Dollar figures "
+                              "are always computed deterministically. The model reasons about only the "
+                              "highest-impact findings each run - a cached, capped judgement call - and "
+                              "the rest use the same deterministic rule engine; the summary reports the split."),
     ("Critic Review", "Checks the recommendations against the underlying numbers and sends "
                       "anything that does not hold up back to be redone."),
     ("Executive Narrator", "Synthesizes everything into an executive summary."),

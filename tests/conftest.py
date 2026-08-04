@@ -48,6 +48,7 @@ def seeded_database(tmp_path_factory):
     monkeypatch.setattr(config, "UPLOAD_DIR", runtime / "uploads")
     monkeypatch.setattr(config, "UPLOAD_MANIFEST_PATH", runtime / "uploads" / "manifest.json")
     monkeypatch.setattr(config, "EXTRACTION_CACHE_PATH", runtime / "extraction_cache.json")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_PATH", runtime / "scenario_cache.json")
     monkeypatch.setattr(config, "LLM_LOG_PATH", runtime / "llm_calls.jsonl")
 
     vector_store._client.cache_clear()

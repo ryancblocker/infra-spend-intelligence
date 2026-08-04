@@ -16,6 +16,7 @@ from app.agents.schemas import (
     DiscoverySummary,
     ContractTerms,
     ExtractedContract,
+    Finding,
     RenewalRisk,
     RevisionRequest,
     ScenarioResult,
@@ -521,6 +522,206 @@ def test_revise_passes_critique_into_prompt(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Optimization: scenario cache
+# ---------------------------------------------------------------------------
+
+
+def _finding(finding_id, annual_savings, category="benchmark_variance",
+             issue="rate above benchmark", monthly=None):
+    return Finding(
+        finding_id=finding_id, category=category, asset_id=f"A-{finding_id}",
+        contract_id="", issue=issue,
+        current_monthly_cost=monthly if monthly is not None else max(annual_savings / 12, 100),
+        estimated_annual_savings=annual_savings, priority="High",
+    )
+
+
+_JUDGMENT = optimization.OptimizationJudgment(
+    recommended_action="Renegotiate", confidence=0.8, risk_level="Medium",
+    business_rationale="fresh LLM judgement", negotiation_talking_points=["cite usage data"],
+)
+
+
+def _optimization_cache_env(monkeypatch, tmp_path, reply):
+    monkeypatch.setattr(optimization, "chat_structured", reply)
+    monkeypatch.setattr(optimization, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_PATH", tmp_path / "scenario_cache.json")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_ENABLED", True)
+
+
+def test_scenario_cache_key_changes_with_finding_savings():
+    a = _finding("F-1", 80_000)
+    b = _finding("F-1", 90_000)
+    keep_a, cancel_a, reneg_a, savings_a, _ = optimization._cost_scenarios(a, {})
+    keep_b, cancel_b, reneg_b, savings_b, _ = optimization._cost_scenarios(b, {})
+    key_a = optimization.cache_key(a, keep_a, cancel_a, reneg_a, savings_a)
+    key_b = optimization.cache_key(b, keep_b, cancel_b, reneg_b, savings_b)
+    assert key_a != key_b
+
+
+def test_scenario_cache_key_changes_with_model(monkeypatch):
+    finding = _finding("F-1", 80_000)
+    keep, cancel, reneg, savings, _ = optimization._cost_scenarios(finding, {})
+    first = optimization.cache_key(finding, keep, cancel, reneg, savings)
+    monkeypatch.setattr(config, "OLLAMA_CHAT_MODEL", "some-other-model")
+    assert optimization.cache_key(finding, keep, cancel, reneg, savings) != first
+
+
+def test_second_optimization_run_hits_scenario_cache(monkeypatch, tmp_path):
+    calls = []
+
+    def reply(system, user, schema, agent="unknown"):
+        calls.append(1)
+        return _JUDGMENT
+
+    _optimization_cache_env(monkeypatch, tmp_path, reply)
+    finding = _finding("F-1", 80_000)
+
+    first = optimization.run([finding])
+    assert len(calls) == 1
+    second = optimization.run([finding])
+    assert len(calls) == 1, "a second run over the same finding must not call the LLM again"
+
+    assert second[0].business_rationale == first[0].business_rationale == "fresh LLM judgement"
+    assert second[0].recommended_action == first[0].recommended_action == "Renegotiate"
+    assert second[0].source == first[0].source == "ollama"
+
+
+def test_scenario_cache_miss_when_finding_savings_changes(monkeypatch, tmp_path):
+    calls = []
+
+    def reply(system, user, schema, agent="unknown"):
+        calls.append(1)
+        return _JUDGMENT
+
+    _optimization_cache_env(monkeypatch, tmp_path, reply)
+    optimization.run([_finding("F-1", 80_000)])
+    before = len(calls)
+    optimization.run([_finding("F-1", 95_000)])
+    assert len(calls) == before + 1
+
+
+def test_corrupt_scenario_cache_file_is_not_fatal(monkeypatch, tmp_path):
+    bad = tmp_path / "scenario_cache.json"
+    bad.write_text("{not json", encoding="utf-8")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_PATH", bad)
+    monkeypatch.setattr(config, "SCENARIO_CACHE_ENABLED", True)
+    assert optimization.load_cache() == {}
+
+
+# ---------------------------------------------------------------------------
+# Optimization: per-run LLM scenario cap
+# ---------------------------------------------------------------------------
+
+
+def test_llm_scenario_cap_bounds_llm_calls(monkeypatch, tmp_path):
+    calls = []
+
+    def reply(system, user, schema, agent="unknown"):
+        calls.append(1)
+        return _JUDGMENT
+
+    monkeypatch.setattr(optimization, "chat_structured", reply)
+    monkeypatch.setattr(optimization, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_PATH", tmp_path / "scenario_cache.json")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_ENABLED", False)
+    monkeypatch.setattr(config, "MAX_LLM_SCENARIOS", 2)
+
+    findings = [_finding(f"F-{i}", 60_000 + i * 1_000) for i in range(4)]
+    results = optimization.run(findings)
+
+    assert len(calls) == 2
+    assert len(results) == 4, "every finding must still produce a scenario"
+
+
+def test_llm_scenario_cap_selects_highest_value_findings_regardless_of_order(monkeypatch, tmp_path):
+    def reply(system, user, schema, agent="unknown"):
+        return _JUDGMENT
+
+    monkeypatch.setattr(optimization, "chat_structured", reply)
+    monkeypatch.setattr(optimization, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_PATH", tmp_path / "scenario_cache.json")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_ENABLED", False)
+    monkeypatch.setattr(config, "MAX_LLM_SCENARIOS", 2)
+
+    # Deliberately out of value order and out of table/insertion order.
+    findings = [
+        _finding("F-low", 55_000),
+        _finding("F-highest", 200_000),
+        _finding("F-mid", 90_000),
+        _finding("F-lowest", 51_000),
+    ]
+    results = optimization.run(findings)
+    llm_reasoned = {r.finding_id for r in results if r.source != "offline"}
+    assert llm_reasoned == {"F-highest", "F-mid"}
+
+
+def test_findings_beyond_cap_get_deterministic_scenario(monkeypatch, tmp_path):
+    def reply(system, user, schema, agent="unknown"):
+        return _JUDGMENT
+
+    monkeypatch.setattr(optimization, "chat_structured", reply)
+    monkeypatch.setattr(optimization, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_PATH", tmp_path / "scenario_cache.json")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_ENABLED", False)
+    monkeypatch.setattr(config, "MAX_LLM_SCENARIOS", 1)
+
+    findings = [_finding("F-top", 200_000), _finding("F-second", 150_000)]
+    results = optimization.run(findings)
+    by_id = {r.finding_id: r for r in results}
+
+    assert by_id["F-top"].source == "ollama"
+    assert by_id["F-second"].source == "offline"
+    expected = optimization._deterministic_action(findings[1])
+    assert by_id["F-second"].recommended_action == expected["recommended_action"]
+    assert by_id["F-second"].business_rationale == expected["business_rationale"]
+
+
+# ---------------------------------------------------------------------------
+# Revision loop must never read or write the scenario cache
+# ---------------------------------------------------------------------------
+
+
+def test_revise_ignores_a_populated_scenario_cache(monkeypatch, tmp_path):
+    monkeypatch.setattr(config, "SCENARIO_CACHE_PATH", tmp_path / "scenario_cache.json")
+    monkeypatch.setattr(config, "SCENARIO_CACHE_ENABLED", True)
+    monkeypatch.setattr(optimization, "get_mode", lambda: "ollama")
+
+    finding = _finding("F-1", 80_000)
+    keep, cancel, reneg, savings, _ = optimization._cost_scenarios(finding, {})
+    key = optimization.cache_key(finding, keep, cancel, reneg, savings)
+    stale = optimization.OptimizationJudgment(
+        recommended_action="Keep but monitor", confidence=0.2, risk_level="Low",
+        business_rationale="STALE CACHED VALUE", negotiation_talking_points=[])
+    optimization._cache_put(key, stale)
+
+    calls = []
+
+    def reply(system, user, schema, agent="unknown"):
+        calls.append(1)
+        return optimization.OptimizationJudgment(
+            recommended_action="Renegotiate", confidence=0.7, risk_level="Medium",
+            business_rationale="FRESH REVISED VALUE", negotiation_talking_points=["ask for discount"])
+
+    monkeypatch.setattr(optimization, "chat_structured", reply)
+
+    original_scenario = ScenarioResult(
+        finding_id="F-1", asset_id="A-F-1", business_rationale="original, not the stale cache value",
+        keep_cost_36mo=keep, cancel_cost_36mo=cancel, renegotiate_cost_36mo=reneg,
+        projected_savings_36mo=savings, estimated_annual_savings=80_000,
+    )
+    revised = optimization.revise([original_scenario],
+                                  [RevisionRequest(finding_id="F-1", critique="too vague")])
+
+    assert len(calls) == 1, "revise() must call the LLM fresh, not short-circuit via the cache"
+    assert revised[0].business_rationale == "FRESH REVISED VALUE"
+    # The pre-existing cache entry (from a hypothetical earlier initial pass) must
+    # be left exactly as it was - a revision must never overwrite or be served
+    # from the cache that backs the *initial* judgment.
+    assert optimization.load_cache()[key]["business_rationale"] == "STALE CACHED VALUE"
+
+
+# ---------------------------------------------------------------------------
 # Narrator
 # ---------------------------------------------------------------------------
 
@@ -552,6 +753,22 @@ def test_narrator_falls_back_when_llm_returns_only_reasoning(monkeypatch):
                         lambda system, user, agent="unknown": "<think>still thinking</think>")
     summary = narrator.run(_DISCOVERY, [], [], [], [])
     assert "baseline annual spend" in summary.executive_summary
+
+
+def test_narrator_reports_llm_vs_deterministic_scenario_split(monkeypatch):
+    """Only some scenarios are model-reasoned (source != 'offline'); the summary
+    must say so honestly rather than implying every recommendation was."""
+    monkeypatch.setattr(narrator, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(narrator, "plain_complete", lambda system, user, agent="unknown": "Summary text.")
+    scenarios = [
+        ScenarioResult(finding_id="F-1", asset_id="A-1", source="ollama"),
+        ScenarioResult(finding_id="F-2", asset_id="A-2", source="offline"),
+        ScenarioResult(finding_id="F-3", asset_id="A-3", source="offline"),
+        ScenarioResult(finding_id="F-4", asset_id="A-4", source="ollama-revised"),
+    ]
+    summary = narrator.run(_DISCOVERY, [], [], scenarios, [])
+    assert summary.scenarios_llm_reasoned == 2
+    assert summary.scenarios_deterministic == 2
 
 
 # ---------------------------------------------------------------------------

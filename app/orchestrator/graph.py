@@ -162,7 +162,10 @@ def detail_for(node: str, output: dict) -> str:
         high = sum(1 for r in risks if r.risk == "HIGH")
         return f"{len(risks)} contracts in renewal window ({high} high risk)"
     if node == "optimization":
-        return f"{len(output['scenarios'])} recommendations scored"
+        scenarios = output["scenarios"]
+        reasoned = sum(1 for s in scenarios if s.source != "offline")
+        return (f"{len(scenarios)} recommendations scored "
+                f"({reasoned} model-reasoned, {len(scenarios) - reasoned} deterministic)")
     if node == "critic":
         return f"{len(output['critic_flags'])} flags raised across {len(output['scenarios'])} recommendations"
     if node == "narrator":

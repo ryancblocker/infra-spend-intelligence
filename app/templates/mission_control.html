@@ -125,6 +125,12 @@
 <div class="card" style="margin-bottom:24px;">
   <div class="section-title">Executive Summary <span class="badge badge-neutral" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
   <p style="font-size:15px; line-height:1.6; margin:0;">{{ summary.executive_summary }}</p>
+  {% if summary.llm_mode != "offline" %}
+  <p class="feed-meta" style="margin-top:10px;">
+    The model reasoned about {{ summary.scenarios_llm_reasoned }} highest-impact recommendation{{ 's' if summary.scenarios_llm_reasoned != 1 else '' }};
+    the remaining {{ summary.scenarios_deterministic }} used the deterministic rule engine.
+  </p>
+  {% endif %}
   {% if critic_flags %}
   <div style="margin-top:14px;">
     <div class="section-title">Critic Flags</div>
