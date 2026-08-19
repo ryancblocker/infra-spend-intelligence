@@ -9,30 +9,87 @@
   </div>
 </div>
 
+{# Every figure here is a pipeline result - total spend is what the Discovery
+   agent computes. Showing them before a run gives away the outcome and makes
+   the first agent look redundant, so they stay blank until the pipeline has
+   actually produced them. #}
 <div class="kpi-grid">
   <div class="kpi-card">
     <div class="kpi-label">Total Annual Spend</div>
-    <div class="kpi-value figures" data-countup="{{ totals.total_annual_spend }}" data-prefix="$">$0</div>
-    <div class="kpi-sub">{{ totals.asset_counts.contracts }} contracts under management</div>
+    {% if has_run %}
+      <div class="kpi-value figures" data-countup="{{ totals.total_annual_spend }}" data-prefix="$">$0</div>
+      <div class="kpi-sub">{{ totals.asset_counts.contracts }} contracts under management</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">discovered when the pipeline runs</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Potential Annual Savings</div>
-    <div class="kpi-value accent figures" data-countup="{{ summary.total_potential_annual_savings if summary else 0 }}" data-prefix="$">$0</div>
-    <div class="kpi-sub">{{ summary.number_of_findings if summary else 0 }} findings identified</div>
+    {% if has_run %}
+      <div class="kpi-value accent figures" data-countup="{{ summary.total_potential_annual_savings if summary else 0 }}" data-prefix="$">$0</div>
+      <div class="kpi-sub">{{ summary.number_of_findings if summary else 0 }} findings identified</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">no findings yet</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">High Renewal Risk</div>
-    <div class="kpi-value figures">{{ summary.high_risk_contracts if summary else "—" }}</div>
-    <div class="kpi-sub">contracts inside their notice window or renewing soon</div>
+    {% if has_run %}
+      <div class="kpi-value figures">{{ summary.high_risk_contracts if summary else "—" }}</div>
+      <div class="kpi-sub">contracts inside their notice window or renewing soon</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">not yet assessed</div>
+    {% endif %}
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Portfolio Assets</div>
-    <div class="kpi-value figures">{{ totals.asset_counts.circuits + totals.asset_counts.colo + totals.asset_counts.licenses + totals.asset_counts.mobile_lines }}</div>
-    <div class="kpi-sub">circuits, colocation, licenses &amp; mobile lines</div>
+    {% if has_run %}
+      <div class="kpi-value figures">{{ totals.asset_counts.circuits + totals.asset_counts.colo + totals.asset_counts.licenses + totals.asset_counts.mobile_lines }}</div>
+      <div class="kpi-sub">circuits, colocation, licenses &amp; mobile lines</div>
+    {% else %}
+      <div class="kpi-value figures kpi-empty">&mdash;</div>
+      <div class="kpi-sub">not yet counted</div>
+    {% endif %}
   </div>
 </div>
 
-<div class="card" style="margin-bottom:24px;" x-data="pipelineRunner()">
+<section class="card upload-card" style="margin-bottom:24px;">
+  <div class="section-title">Analyze Your Own Contract</div>
+  <p class="page-subtitle" style="margin-bottom:14px;">PDF or text, up to 10 MB. We extract clause terms and
+    renewal risk. Utilization findings need usage data a contract does not contain.</p>
+
+  <div id="upload-drop" class="upload-drop">
+    <input type="file" id="upload-input" accept=".pdf,.txt" hidden>
+    <button type="button" id="upload-browse" class="btn">Choose a file</button>
+    <span class="upload-hint">or drag it here</span>
+  </div>
+
+  <p id="upload-status" class="upload-status" role="status" aria-live="polite"></p>
+
+  {% if uploads %}
+  <ul id="upload-list" class="upload-list">
+    {% for item in uploads %}
+    <li data-contract-id="{{ item.contract_id }}">
+      <a href="/contracts/{{ item.contract_id }}">{{ item.contract_id }}</a>
+      <span class="upload-vendor">{{ item.terms.vendor if item.terms and item.terms.vendor else item.original_filename }}</span>
+      <span class="upload-renewal">{{ item.terms.renewal_date if item.terms and item.terms.renewal_date else "" }}</span>
+      <button type="button" class="btn btn-ghost btn-remove" data-remove="{{ item.contract_id }}">Remove</button>
+      {% if item.low_confidence %}
+      <span class="upload-partial" title="Little could be read from this document - the extracted terms may be incomplete.">partial</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div id="upload-list-empty" class="empty-state" style="padding:16px 0;">No contracts uploaded yet.</div>
+  {% endif %}
+</section>
+
+<div class="card" style="margin-bottom:24px;" x-data='pipelineRunner({{ node_details | default({}) | tojson }})'
+     {% if autostart %}x-init="$nextTick(() => start())"{% endif %}>
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
     <div class="section-title" style="margin:0;">Agent Pipeline</div>
     <button class="btn btn-primary" @click="start()" :disabled="running">
@@ -67,6 +124,12 @@
 <div class="card" style="margin-bottom:24px;">
   <div class="section-title">Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
   <p style="font-size:15px; line-height:1.6; margin:0;">{{ summary.executive_summary }}</p>
+  {% if summary.llm_mode != "offline" %}
+  <p class="feed-meta" style="margin-top:10px;">
+    The model reasoned about {{ summary.scenarios_llm_reasoned }} highest-impact recommendation{{ 's' if summary.scenarios_llm_reasoned != 1 else '' }};
+    the remaining {{ summary.scenarios_deterministic }} used the deterministic rule engine.
+  </p>
+  {% endif %}
   {% if critic_flags %}
   <div style="margin-top:14px;">
     <div class="section-title">Critic Flags</div>

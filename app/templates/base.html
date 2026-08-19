@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}PACT{% endblock %} · Mission Control</title>
-  <link rel="stylesheet" href="/static/css/theme.css">
+  <link rel="stylesheet" href="/static/css/theme.css?v={{ asset_version }}">
   <script src="/static/vendor/alpine.min.js" defer></script>
   <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
@@ -25,6 +25,7 @@
       <a class="nav-link {% if request.url.path == '/scenarios' %}active{% endif %}" href="/scenarios">Scenarios</a>
       <a class="nav-link {% if request.url.path == '/ask' %}active{% endif %}" href="/ask">Ask PACT</a>
       <a class="nav-link {% if request.url.path.startswith('/runs') %}active{% endif %}" href="/runs">Run History</a>
+      <a class="nav-link {% if request.url.path == '/welcome' %}active{% endif %}" href="/welcome">How it works</a>
 
       <div class="nav-footer">
         <button class="theme-toggle" onclick="pactToggleTheme()">Toggle theme</button>
@@ -39,7 +40,7 @@
     </main>
   </div>
 
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v={{ asset_version }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

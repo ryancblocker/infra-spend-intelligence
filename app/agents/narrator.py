@@ -34,6 +34,13 @@ def run(discovery: DiscoverySummary, findings: list[Finding], renewal_risks: lis
 
     summary_text = _narrative(discovery, total_potential_savings, high_risk_contracts, savings_pct, top_scenarios)
 
+    # source == "offline" is the deterministic rule-engine path; anything else
+    # ("ollama", "anthropic", or their "-revised" variants) means the model
+    # actually reasoned about that finding. See PipelineRunSummary for why
+    # this is surfaced rather than left implicit.
+    scenarios_llm_reasoned = sum(1 for s in scenarios if s.source != "offline")
+    scenarios_deterministic = len(scenarios) - scenarios_llm_reasoned
+
     top_risks = []
     if high_risk_contracts:
         top_risks.append(f"{high_risk_contracts} contracts have HIGH renewal risk and need immediate action.")
@@ -58,6 +65,8 @@ def run(discovery: DiscoverySummary, findings: list[Finding], renewal_risks: lis
         top_risks=top_risks,
         immediate_actions=immediate_actions,
         critic_flags=critic_flags,
+        scenarios_llm_reasoned=scenarios_llm_reasoned,
+        scenarios_deterministic=scenarios_deterministic,
     )
 
 

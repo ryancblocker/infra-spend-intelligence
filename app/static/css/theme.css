@@ -541,3 +541,256 @@ a.feed-row:hover .feed-title { color: var(--brand); }
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11.5px;
 }
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+.btn-ghost:hover { color: var(--ink-primary); border-color: var(--border-strong); }
+
+/* --- Welcome / how-it-works ------------------------------------------------ */
+
+.welcome { max-width: 780px; }
+
+.welcome-hero { margin: 4px 0 40px; }
+
+.welcome-eyebrow {
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.welcome-title {
+  margin: 0 0 16px;
+  font-size: clamp(27px, 3.6vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+}
+
+.welcome-lede {
+  margin: 0 0 26px;
+  max-width: 66ch;
+  color: var(--ink-secondary);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-lg { padding: 11px 22px; font-size: 14px; }
+
+.welcome-mode { margin-left: 4px; color: var(--ink-muted); font-size: 12px; }
+
+.welcome-section { margin-bottom: 40px; }
+
+.welcome-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.welcome-h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.welcome-tag {
+  color: var(--ink-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.welcome-fine {
+  margin: 16px 0 0;
+  max-width: 66ch;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.welcome-fine--top { margin: 0 0 20px; }
+
+.welcome-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.welcome-stat { padding: 14px 16px; background: var(--surface-1); }
+
+.welcome-stat--lead { grid-column: span 2; }
+
+.welcome-stat-value {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+
+.welcome-stat--lead .welcome-stat-value { font-size: 22px; }
+
+.welcome-stat-label {
+  margin-top: 4px;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+}
+
+.welcome-agents { margin: 0; padding: 0; list-style: none; }
+
+.welcome-agent {
+  display: flex;
+  gap: 14px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.welcome-agent:first-child { padding-top: 0; }
+.welcome-agent:last-child { border-bottom: none; padding-bottom: 0; }
+
+.welcome-agent-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-agent-body { min-width: 0; }
+.welcome-agent-name { font-size: 13.5px; font-weight: 600; margin-bottom: 3px; }
+
+.welcome-agent-desc {
+  max-width: 62ch;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+@media (max-width: 560px) {
+  .welcome-stat--lead { grid-column: span 2; }
+}
+
+.kpi-empty { color: var(--ink-muted); opacity: 0.55; }
+
+.welcome-tag--example {
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--ink-secondary);
+}
+
+.welcome-stats--example { opacity: 0.88; }
+
+/* --- Contract upload card --------------------------------------------------- */
+
+.upload-drop {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+}
+.upload-drop.is-over { border-color: var(--brand); background: var(--surface-2); }
+.upload-hint { color: var(--ink-muted); font-size: 12.5px; }
+.upload-status { margin-top: 10px; min-height: 18px; font-size: 12.5px; color: var(--ink-secondary); }
+.upload-status.is-ok { color: var(--status-good); }
+.upload-status.is-error { color: var(--status-critical); }
+.upload-status.is-warning { color: var(--status-warning); }
+.upload-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.upload-list li {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.upload-list li:first-child { border-top: none; }
+.upload-list a { font-weight: 700; text-decoration: none; }
+.upload-list a:hover { color: var(--brand); }
+.upload-vendor { color: var(--ink-secondary); }
+.upload-renewal { color: var(--ink-muted); font-size: 12px; }
+/* A quiet tag, not a sentence. The flag has to stay - a row where almost
+   nothing was extracted must not read as a fully understood contract - but on
+   a dashboard it belongs as a marker next to the row, with the explanation on
+   hover, rather than a line of warning prose. */
+.upload-partial {
+  justify-self: start;
+  padding: 1px 6px;
+  border: 1px solid var(--status-warning);
+  border-radius: 999px;
+  color: var(--status-warning);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: help;
+}
+
+/* Extraction has no notion of "percent done" - up to 3 agentic LLM passes
+   against a local model, each one a black box until it returns - so this is
+   deliberately indeterminate rather than a bar that creeps toward a number
+   and stalls. The sliding fill mirrors the pipeline rail's .running dot
+   (pulse, ease-in-out, brand-colored) rather than inventing a new motion
+   language. */
+.upload-progress-track {
+  position: relative;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.upload-progress-fill {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 35%;
+  border-radius: 999px;
+  background: var(--brand);
+  animation: upload-indeterminate 1.4s ease-in-out infinite;
+}
+@keyframes upload-indeterminate {
+  0% { left: -35%; }
+  100% { left: 100%; }
+}
+.upload-elapsed { margin-top: 6px; font-size: 12px; color: var(--ink-muted); }
+
+/* prefers-reduced-motion: the bar stops sliding and sits as a plain static
+   track - the elapsed-seconds text (already present regardless of motion
+   preference) carries the "still working" signal instead of movement. */
+@media (prefers-reduced-motion: reduce) {
+  .upload-progress-fill { animation: none; left: 0; width: 100%; opacity: 0.3; }
+}

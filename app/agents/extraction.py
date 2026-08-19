@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime
 
 from pydantic import BaseModel, create_model
 
@@ -65,10 +66,30 @@ FIELD_QUERIES = {
 # so these get one more look before being reported as genuinely absent.
 BOOLEAN_FIELDS = {"auto_renew", "has_mfn_clause", "has_price_protection_clause"}
 
+# The fields that decide whether an extraction is worth presenting as a reading
+# of the document. Without a vendor there is nothing to name the contract by;
+# without a renewal date there is no renewal risk, which is one of the only two
+# things an uploaded contract can produce at all.
+LOAD_BEARING_FIELDS = ("vendor", "renewal_date")
+
+
+def is_low_confidence(terms) -> bool:
+    """True when extraction did not recover the fields that make an uploaded
+    contract usable. Accepts a record or the plain dict stored in the manifest.
+
+    Deliberately not "any unresolved field": every optional clause the document
+    genuinely does not contain counts as unresolved, and a False boolean is
+    indistinguishable from a missing one (see BOOLEAN_FIELDS), so that rule was
+    true for virtually every upload. A flag that is always on is not a flag."""
+    if terms is None:
+        return True
+    data = terms.model_dump() if hasattr(terms, "model_dump") else dict(terms)
+    return not all(str(data.get(field) or "").strip() for field in LOAD_BEARING_FIELDS)
+
 
 def run() -> list[ExtractedContract]:
     results = []
-    for path in sorted(config.CONTRACT_DOCS_DIR.glob("*.txt")):
+    for path in config.document_paths():
         results.append(extract_one(path.stem, path.read_text(encoding="utf-8")))
     return results
 
@@ -160,6 +181,15 @@ def extract_one(contract_id: str, text: str) -> ExtractedContract:
     else:
         record = _extract_agentic(contract_id, text)
 
+    # _extract_offline already reconciles for the offline path; applying it
+    # again here is a no-op once both fields are set (reconcile_costs only
+    # acts when exactly one side is None), so this is what makes the
+    # agentic path get the same treatment without double-deriving offline's.
+    record.monthly_cost, record.annual_cost = reconcile_costs(record.monthly_cost, record.annual_cost)
+    # Same treatment, same reason: the model reads what the document states, and
+    # Python puts it into the one form every downstream consumer parses.
+    record.renewal_date = coerce_renewal_date(record.renewal_date)
+
     _cache_put(contract_id, text, record)
     return record
 
@@ -215,7 +245,12 @@ def _extract_agentic(contract_id: str, text: str) -> ExtractedContract:
         # the model never produced anything usable - degrade, don't guess
         record = _with_offline_citations(contract_id, text)
         record.extraction_iterations = iterations or 1
-        record.injection_flags = sorted(set(injection_flags))
+        # Union, not replace: _with_offline_citations scanned the whole
+        # document, while injection_flags only holds what the retrieved chunks
+        # contained. Overwriting dropped every marker sitting in a clause the
+        # loop never retrieved - which is most of them, and always all of them
+        # when retrieval returned nothing at all.
+        record.injection_flags = sorted(set(injection_flags) | set(record.injection_flags))
         record.retrieval_queries = queries_issued
         return record
 
@@ -296,6 +331,65 @@ def _cache_put(contract_id: str, text: str, record: ExtractedContract) -> None:
     save_cache(cache)
 
 
+# Formats a contract writes a date in, beyond ISO. Numeric forms like 09/30/2026
+# are deliberately absent: day-first and month-first are indistinguishable, and
+# a wrong renewal date is worse than an unparsed one.
+_DATE_FORMATS = ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%B %d, %Y", "%b %d, %Y",
+                 "%B %d %Y", "%d-%b-%Y", "%Y/%m/%d")
+
+
+def coerce_renewal_date(value: str) -> str:
+    """Return an ISO date, or "" - never prose.
+
+    Two failure modes, one guard. The model reports a date the way the contract
+    writes it ("30 September 2026"), which normalize_date converts. But asked for
+    a renewal date it will also sometimes answer with the clause it found nearby
+    - "60 days prior to term expiry" came back from a live run. Storing that in a
+    date column presents a guess as a reading, and renewal.run() parses %Y-%m-%d,
+    so the contract would drop out of renewal risk silently anyway. Recording
+    that we read no date is the honest outcome; is_low_confidence then flags it.
+    """
+    normalized = normalize_date(value)
+    try:
+        datetime.strptime((normalized or "").strip(), "%Y-%m-%d")
+    except (ValueError, AttributeError):
+        return ""
+    return normalized
+
+
+def normalize_date(value: str) -> str:
+    """Put a date the model read into the ISO form the rest of the system parses.
+
+    A real contract says "expires on 30 September 2026", and the model reports
+    that faithfully - but renewal.run() parses end_date with %Y-%m-%d, so a
+    prose date raised ValueError and the contract dropped out of renewal risk
+    silently, behind a 200 response. That is one of only two findings an
+    uploaded contract can produce.
+
+    Conversion only, never inference: an unrecognized string is returned
+    untouched rather than guessed at, so a date we cannot read stays visibly
+    unread instead of becoming a confident-looking wrong one."""
+    text = (value or "").strip()
+    if not text:
+        return value
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return value
+
+
+def reconcile_costs(monthly: float | None, annual: float | None) -> tuple[float | None, float | None]:
+    """Fill in whichever figure the contract did not state. Arithmetic only -
+    the model is never asked to compute a number, just to read one."""
+    if monthly is not None and annual is None:
+        return monthly, round(monthly * 12, 2)
+    if annual is not None and monthly is None:
+        return round(annual / 12, 2), annual
+    return monthly, annual
+
+
 def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
     vendor = _search(text, r"VENDOR:\s*(.+)")
     category = _search(text, r"CATEGORY:\s*(.+)")
@@ -308,6 +402,22 @@ def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
     esc_match = re.search(r"Annual Escalator of (\d+(?:\.\d+)?)%", text, re.IGNORECASE)
     escalator_pct = float(esc_match.group(1)) if esc_match else None
     minimum_commitment = _search(text, r"covering (.+?)\.\s")
+    # The $ must be tightly bound to its keyword (only "of"/"is" and an
+    # optional colon in between) so an unrelated fee mentioned earlier in the
+    # same clause can't be grabbed instead - see reconcile_costs for why the
+    # missing figure is never read this way, only computed.
+    monthly_cost = _money(
+        text, r"(?:recurring fees|monthly (?:fee|charge)s?)\s+(?:of|is)\s*:?\s*\$\s*([\d,]+(?:\.\d{2})?)"
+    )
+    annual_cost = (
+        # The corpus states the annual figure as a parenthetical next to the
+        # monthly one ("$X per month ($Y annualized)"), not as "annual fees
+        # of $Y" - this must be tried first so a stated figure is read
+        # rather than left to be derived as monthly * 12.
+        _money(text, r"\(\s*\$\s*([\d,]+(?:\.\d{2})?)\s*annualized\)")
+        or _money(text, r"(?:annual|yearly)\s+(?:fees|cost|charges)\s+(?:of|is)\s*:?\s*\$\s*([\d,]+(?:\.\d{2})?)")
+    )
+    monthly_cost, annual_cost = reconcile_costs(monthly_cost, annual_cost)
     sla_summary = _search(text, r"Service Level Credits:\s*(.+)")
     liability_summary = _search(text, r"Limitation of Liability:\s*(.+)")
     has_mfn = "most favored pricing" in text.lower()
@@ -325,6 +435,8 @@ def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
         termination_fee_pct=termination_fee_pct,
         annual_escalator_pct=escalator_pct,
         minimum_commitment=minimum_commitment,
+        monthly_cost=monthly_cost,
+        annual_cost=annual_cost,
         sla_summary=sla_summary,
         liability_cap_summary=liability_summary,
         has_mfn_clause=has_mfn,
@@ -338,6 +450,16 @@ def _extract_offline(contract_id: str, text: str) -> ExtractedContract:
 def _search(text: str, pattern: str) -> str:
     match = re.search(pattern, text, re.IGNORECASE)
     return match.group(1).strip() if match else ""
+
+
+def _money(text: str, pattern: str) -> float | None:
+    match = re.search(pattern, text, re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        return float(match.group(1).replace(",", ""))
+    except ValueError:
+        return None
 
 
 def _offline_risk(auto_renew: bool, notice_days: int | None, fee_pct: float | None,

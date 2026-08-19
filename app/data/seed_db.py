@@ -44,7 +44,58 @@ def build_database() -> dict[str, int]:
         conn.commit()
     finally:
         conn.close()
+
+    rehydrate_uploads()
     return counts
+
+
+def rehydrate_uploads() -> int:
+    """Reconcile the contracts table's uploaded rows against the manifest.
+
+    The manifest is the durable record of an upload; the contracts row is
+    derived state, so this makes the table match the manifest in both
+    directions:
+
+    - build_database() deletes the database file outright, so uploaded rows
+      cannot survive a reseed on their own - each manifest entry is replayed.
+    - A row for an id the manifest no longer lists is an orphan and is deleted.
+      Such a row is unreachable by design: the dashboard's upload card is built
+      from the manifest, so it gets no Remove button, and /api/uploads/{id}/remove
+      404s on it - yet it still rendered on /contracts and still counted in
+      portfolio totals and renewal risk. Derived state must not outlive the
+      record it derives from.
+
+    Returns the number of rows restored."""
+    from app.agents.schemas import ExtractedContract
+    from app.tools import dataset_tools, uploads
+
+    dataset_tools.ensure_source_column()
+    try:
+        entries = uploads.read_manifest()["entries"]
+    except uploads.ManifestError as exc:
+        # No reconciliation on a corrupt manifest: "the manifest lists nothing"
+        # and "the manifest could not be read" are different facts, and deleting
+        # every uploaded row on the second would turn a recoverable parse failure
+        # into permanent loss of the rows too.
+        print(
+            f"[PACT] Skipping upload rehydration - manifest at "
+            f"{config.UPLOAD_MANIFEST_PATH} is corrupt: {exc}"
+        )
+        return 0
+
+    restored = 0
+    for entry in entries.values():
+        terms = entry.get("terms")
+        if not terms:
+            continue
+        dataset_tools.upsert_upload_row(ExtractedContract(**terms), entry.get("original_filename", ""))
+        restored += 1
+
+    for orphan_id in dataset_tools.fetch_upload_ids() - set(entries):
+        print(f"[PACT] Dropping orphaned upload row {orphan_id} - no manifest entry.")
+        dataset_tools.delete_upload_row(orphan_id)
+
+    return restored
 
 
 def main() -> None:

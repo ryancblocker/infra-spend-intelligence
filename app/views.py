@@ -53,10 +53,9 @@ def contract_detail_view(state: PipelineState, contract_id: str) -> dict | None:
                 if f.contract_id == contract_id]
     scenarios = [s for s in state.get("scenarios", []) if s.contract_id == contract_id]
 
-    doc_path = None
     from app import config
-    candidate = config.CONTRACT_DOCS_DIR / f"{contract_id}.txt"
-    source_text = candidate.read_text(encoding="utf-8") if candidate.exists() else None
+    candidate = config.document_path(contract_id)
+    source_text = candidate.read_text(encoding="utf-8") if candidate else None
 
     return {
         "contract": contract,
@@ -66,6 +65,7 @@ def contract_detail_view(state: PipelineState, contract_id: str) -> dict | None:
         "findings": findings,
         "scenarios": scenarios,
         "source_text": source_text,
+        "is_upload": (contract or {}).get("source") == "upload",
     }
 
 

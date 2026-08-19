@@ -123,9 +123,12 @@
   </div>
 </div>
 
-{% if findings or scenarios %}
+{% if findings or scenarios or is_upload %}
 <div class="card" style="margin-bottom:24px;">
   <div class="section-title">Related Findings &amp; Recommendations</div>
+  {% if is_upload %}
+  <div class="empty-state">Utilization findings require your usage data, which this contract does not contain.</div>
+  {% else %}
   {% for s in scenarios %}
   <div class="feed-row">
     <div>
@@ -141,6 +144,7 @@
     <div class="feed-value savings figures">{{ s.estimated_annual_savings | money }}</div>
   </div>
   {% endfor %}
+  {% endif %}
 </div>
 {% endif %}
 

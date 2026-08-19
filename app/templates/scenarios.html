@@ -6,6 +6,13 @@
   <div>
     <h1 class="page-title">Keep / Cancel / Renegotiate</h1>
     <p class="page-subtitle">36-month cost projections and negotiation guidance for every scored finding, ranked by savings.</p>
+    {% if summary and summary.llm_mode != "offline" %}
+    <p class="page-subtitle">
+      The model reasoned about the {{ summary.scenarios_llm_reasoned }} highest-impact recommendation{{ 's' if summary.scenarios_llm_reasoned != 1 else '' }}
+      (marked <span class="badge badge-neutral" style="text-transform:none;">model-reasoned</span> below); the other {{ summary.scenarios_deterministic }}
+      used the same deterministic rule engine as the offline mode. Cost figures are always computed deterministically, never by the model.
+    </p>
+    {% endif %}
   </div>
 </div>
 
@@ -26,6 +33,9 @@
           <span class="badge badge-{{ 'critical' if s.recommended_action == 'Cancel' else ('warning' if s.recommended_action == 'Renegotiate' else 'neutral') }}">{{ s.recommended_action }}</span>
           <strong>{{ s.asset_id }}</strong>
           {% if s.contract_id %}<a class="row-link" href="/contracts/{{ s.contract_id }}" style="font-size:12px; color:var(--ink-muted);">{{ s.contract_id }}</a>{% endif %}
+          {% if s.source != "offline" %}
+          <span class="badge badge-neutral" style="text-transform:none; font-size:10px;" title="This judgement was reasoned about by the model.">model-reasoned</span>
+          {% endif %}
         </div>
         <div class="feed-meta">{{ s.issue }}</div>
         <p style="font-size:13.5px; margin:8px 0 0 0;">{{ s.business_rationale }}</p>
