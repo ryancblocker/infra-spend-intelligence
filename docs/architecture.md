@@ -95,8 +95,10 @@ executive summary. See `app/orchestrator/graph.py`.
 Three modes, auto-detected at startup (`PACT_LLM_MODE` env var forces one):
 
 1. **`ollama`** (default when reachable) - local model via `ollama` Python
-   client. Chat model: `qwen3:8b` (tool-calling capable at a laptop-friendly
-   size). Embedding model: `nomic-embed-text`. Both overridable via env vars.
+   client. Chat model: `qwen3:1.7b`, sized deliberately for an 8 GB unified-
+   memory Mac - `qwen3:8b` was the original design target but hung such a
+   machine outright under real pipeline load (see `docs/setup.md`).
+   Embedding model: `nomic-embed-text`. Both overridable via env vars.
 2. **`anthropic`** - used if `ANTHROPIC_API_KEY` is set and Ollama isn't
    reachable. Structured output via forced tool-use.
 3. **`offline`** - deterministic fallback (regex extraction, templated
