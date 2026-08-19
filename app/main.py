@@ -193,13 +193,18 @@ def welcome(request: Request):
 
 @app.post("/api/reset")
 def api_reset():
-    """Clear the current run so the demo can be replayed from zero. Idempotent."""
+    """Clear the current view so the demo can be replayed from zero. Idempotent.
+
+    Only resets in-memory state - the run stays in history (Run History,
+    /api/runs) and a restart still reloads it via persistence.load_run() in
+    on_startup(). Reset is for replaying the live demo, not for erasing the
+    trend data the history feature exists to keep.
+    """
     global _LAST_RUN, _LAST_NODE_DETAILS
     _LAST_RUN = {}
     # Must clear too, or the pipeline still renders green from the previous run
     # after a reset that is supposed to return everything to zero.
     _LAST_NODE_DETAILS = {}
-    persistence.clear_run()
     return {"ok": True, "has_run": False}
 
 

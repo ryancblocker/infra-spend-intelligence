@@ -112,17 +112,6 @@ def list_runs() -> list[dict]:
     return list(reversed(_read_index()))
 
 
-def clear_run() -> None:
-    """Wipe all persisted run history so the demo can be replayed from zero.
-    Idempotent - a missing runs dir is not an error."""
-    try:
-        for entry in _read_index():
-            _run_file(entry["run_id"]).unlink(missing_ok=True)
-        INDEX_FILE.unlink(missing_ok=True)
-    except Exception:
-        pass
-
-
 def load_run(run_id: str | None = None) -> PipelineState | None:
     """Loads a specific run, or the most recent one if run_id is omitted."""
     if run_id is None:
