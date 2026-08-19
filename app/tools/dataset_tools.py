@@ -66,6 +66,21 @@ def fetch_benchmarks() -> dict[str, float]:
     return {row["category"]: float(row["benchmark_rate"]) for row in rows}
 
 
+def update_benchmark_rates(rates: dict[str, float]) -> None:
+    """Overwrite specific benchmark_rate rows by category. Only categories
+    present in `rates` are touched - every other category (including ones
+    with no scraped source, see pricing_scraper.SOURCES) keeps its seeded
+    value untouched."""
+    if not rates:
+        return
+    with connection() as conn:
+        conn.executemany(
+            "UPDATE benchmark_rates SET benchmark_rate = ? WHERE category = ?",
+            [(rate, category) for category, rate in rates.items()],
+        )
+        conn.commit()
+
+
 def fetch_child_assets(contract_id: str) -> dict[str, list[dict]]:
     """All granular assets (circuits/colo/licenses/mobile) tied to one contract."""
     return {

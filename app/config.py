@@ -95,6 +95,17 @@ RELEVANCE_FLOOR_HASHED = float(os.environ.get("PACT_RELEVANCE_FLOOR_HASHED", "1.
 # Ollama end-to-end run before trusting it.
 RELEVANCE_FLOOR_EMBED = float(os.environ.get("PACT_RELEVANCE_FLOOR_EMBED", "1.50"))
 
+# --- Benchmark pricing refresh ---
+BENCHMARK_CACHE_PATH = RUNTIME_DIR / "benchmark_cache.json"
+# How long a scrape stays valid before the next manual refresh re-fetches
+# instead of reusing the cache. The source pages are pricing pages, not live
+# feeds - they do not move fast enough to justify re-scraping on every click.
+BENCHMARK_REFRESH_TTL_HOURS = float(os.environ.get("PACT_BENCHMARK_REFRESH_HOURS", "24"))
+# Ceiling on a whole manual refresh (up to 7 sequential LLM calls, one per
+# source) - same reasoning as PIPELINE_TIMEOUT_SECONDS below: a genuinely
+# hung call must not wedge the refresh lock open forever.
+BENCHMARK_REFRESH_TIMEOUT_SECONDS = float(os.environ.get("PACT_BENCHMARK_REFRESH_TIMEOUT", "300"))
+
 # --- Observability & caching ---
 LLM_LOG_PATH = RUNTIME_DIR / "llm_calls.jsonl"
 EXTRACTION_CACHE_PATH = RUNTIME_DIR / "extraction_cache.json"

@@ -120,6 +120,28 @@
   {% endif %}
 </div>
 
+<div class="card" style="margin-bottom:24px;" x-data="benchmarkRefresher()">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+    <div class="section-title" style="margin:0;">Market Pricing</div>
+    <button class="btn btn-ghost" @click="start()" :disabled="running">
+      <span x-show="!running">Refresh market pricing</span>
+      <span x-show="running">Refreshing…</span>
+    </button>
+  </div>
+  {% if benchmark_refresh and benchmark_refresh.rates %}
+  <p class="feed-meta" style="margin:0 0 8px;">
+    Last refreshed {{ benchmark_refresh.fetched_at }} · {{ benchmark_refresh.rates | length }} rate{{ 's' if benchmark_refresh.rates | length != 1 else '' }} from live sources, the rest static.
+  </p>
+  {% else %}
+  <p class="feed-meta" style="margin:0 0 8px;">Benchmark rates are currently static (seed data). Refresh to pull current colocation, mobile, and license pricing from live sources.</p>
+  {% endif %}
+  <div x-show="log.length > 0" style="max-height:160px; overflow-y:auto; font-size:13px; line-height:1.7;">
+    <template x-for="line in log">
+      <div x-text="line"></div>
+    </template>
+  </div>
+</div>
+
 {% if summary %}
 <div class="card" style="margin-bottom:24px;">
   <div class="section-title">Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>

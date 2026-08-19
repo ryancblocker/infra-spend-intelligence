@@ -29,7 +29,7 @@ from app.orchestrator import persistence  # noqa: E402
 from app.orchestrator.events import DONE_SENTINEL, emit, emit_done, new_queue  # noqa: E402
 from app.orchestrator.graph import detail_for, run_pipeline  # noqa: E402
 from app.orchestrator.state import PipelineState  # noqa: E402
-from app.tools import dataset_tools, vector_store  # noqa: E402
+from app.tools import dataset_tools, pricing_scraper, vector_store  # noqa: E402
 from app.tools.llm_client import (  # noqa: E402
     UNTRUSTED_PREAMBLE,
     get_mode,
@@ -72,6 +72,7 @@ templates.env.filters["money2"] = lambda v: f"${v:,.2f}" if v is not None else "
 
 _LAST_RUN: PipelineState = {}
 _RUN_LOCK = threading.Lock()
+_BENCHMARK_REFRESH_LOCK = threading.Lock()
 # Per-node result lines from the last run, so a page load after the run can
 # render the pipeline already complete instead of resetting every node to grey.
 _LAST_NODE_DETAILS: dict[str, str] = {}
@@ -106,6 +107,16 @@ def on_startup() -> None:
         seed_db.rehydrate_uploads()
     except Exception as exc:
         print(f"[PACT] Upload reconciliation skipped: {exc}")
+
+    # Re-applies the last scrape from cache (if any) - no network/LLM call,
+    # so a --reload dev restart or a fresh boot is never slowed down by it.
+    # A real scrape only runs when someone hits "Refresh market pricing" on
+    # the site (see /api/refresh-benchmarks below).
+    try:
+        cache_result = pricing_scraper.apply_cached_only()
+        print(f"[PACT] Benchmark pricing (from cache): {cache_result['status']}")
+    except Exception as exc:
+        print(f"[PACT] Benchmark pricing cache reapply skipped: {exc}")
 
     if config.FRESH_START:
         print("[PACT] PACT_FRESH_START=1 - starting with no prior run loaded.")
@@ -447,6 +458,7 @@ def mission_control(request: Request):
     ctx["autostart"] = request.query_params.get("start") == "1"
     ctx["node_details"] = _LAST_NODE_DETAILS
     ctx["uploads"] = _uploaded_contracts()
+    ctx["benchmark_refresh"] = pricing_scraper.last_refresh()
     ctx.update({
         "totals": totals,
         "findings": (list(_LAST_RUN.get("waste_findings", [])) + list(_LAST_RUN.get("benchmark_findings", [])))[:8],
@@ -584,6 +596,50 @@ async def api_run():
                 ok = False
             yield item.to_sse()
         yield f"event: result\ndata: {json.dumps({'ok': ok})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream",
+                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+async def _execute_benchmark_refresh(q: "queue_module.Queue") -> None:
+    """Same shape as _execute_pipeline: owns the refresh's actual lifecycle
+    independent of the SSE connection, so a closed tab can't orphan an
+    in-flight scrape holding the lock open. pricing_scraper.refresh_benchmarks
+    already applies and emits progress for each source as it finishes (see
+    its docstring) - this just bounds the whole thing and always frees the
+    lock."""
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(lambda: pricing_scraper.refresh_benchmarks(force=True, event_queue=q)),
+            timeout=config.BENCHMARK_REFRESH_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        emit(q, "Benchmark refresh", "error",
+             f"Timed out after {config.BENCHMARK_REFRESH_TIMEOUT_SECONDS:.0f}s")
+        emit_done(q)
+    except Exception:
+        # refresh_benchmarks() already emits its own error events and
+        # DONE_SENTINEL in its finally block before this could be reached.
+        pass
+    finally:
+        _BENCHMARK_REFRESH_LOCK.release()
+
+
+@app.get("/api/refresh-benchmarks")
+async def api_refresh_benchmarks():
+    if not _BENCHMARK_REFRESH_LOCK.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="A pricing refresh is already in progress")
+
+    q = new_queue()
+    asyncio.create_task(_execute_benchmark_refresh(q))
+
+    async def event_stream():
+        while True:
+            item = await asyncio.to_thread(q.get)
+            if isinstance(item, str) and item == DONE_SENTINEL:
+                break
+            yield item.to_sse()
+        yield "event: result\ndata: {}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                               headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

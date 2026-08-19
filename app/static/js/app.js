@@ -162,6 +162,59 @@ function pipelineRunner(completedDetails) {
 }
 window.pipelineRunner = pipelineRunner;
 
+// --- Market pricing refresh (Mission Control) ---
+//
+// One source page at a time, streamed the same way the pipeline is: each
+// AgentEvent lands as it happens rather than all at once at the end, so a
+// slow or unreachable source is visible immediately instead of looking like
+// a hang. See app/tools/pricing_scraper.py for the source list and why each
+// one was picked.
+
+function benchmarkRefresher() {
+  return {
+    running: false,
+    log: [],
+    _source: null,
+
+    start() {
+      if (this.running) return;
+      this.running = true;
+      this.log = [];
+
+      const source = new EventSource("/api/refresh-benchmarks");
+      this._source = source;
+
+      source.onmessage = (evt) => {
+        const data = JSON.parse(evt.data);
+        if (data.status === "started") {
+          this.log.unshift(`${data.label}: checking…`);
+        } else {
+          this.log.unshift(`${data.label}: ${data.detail || data.status}`);
+        }
+      };
+      source.addEventListener("result", () => {
+        this._close();
+        this.running = false;
+        // Reload so the "last refreshed" timestamp and any updated rates
+        // render from the server rather than being reconstructed here.
+        window.location.reload();
+      });
+      source.onerror = () => {
+        this._close();
+        this.running = false;
+      };
+    },
+
+    _close() {
+      if (this._source) {
+        this._source.close();
+        this._source = null;
+      }
+    },
+  };
+}
+window.benchmarkRefresher = benchmarkRefresher;
+
 // --- Ask page ---
 
 function askChat() {
