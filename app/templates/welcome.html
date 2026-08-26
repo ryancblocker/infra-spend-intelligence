@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}How it works{% endblock %}
+{% block content %}
+
+{# Same icon per agent as the live pipeline diagram on Mission Control, so
+   this explainer and the real thing read as the same product. #}
+{% set agent_icons = ["search", "file-text", "trash", "bar-chart", "calendar", "sliders", "shield-check", "sparkles"] %}
+
+<div class="welcome">
+
+  <header class="welcome-hero">
+    <div class="welcome-eyebrow">Portfolio Agentic Contract Tracker</div>
+    <h1 class="welcome-title">Find the money hiding in your infrastructure contracts.</h1>
+    <p class="welcome-lede">
+      Eight agents read your telecom, colocation, software and mobility contracts &mdash; pulling
+      terms out of the actual legal text, checking rates against market benchmarks, and
+      recommending what to keep, cancel or renegotiate. Everything runs locally. No contract
+      text leaves this machine.
+    </p>
+    <div class="welcome-actions">
+      {% if has_run %}
+        <a class="btn btn-primary btn-lg" href="/">View dashboard</a>
+        <button class="btn btn-ghost" onclick="resetRun()">Reset &amp; start over</button>
+      {% else %}
+        <a class="btn btn-primary btn-lg" href="/?start=1">Run the analysis</a>
+      {% endif %}
+      <span class="welcome-mode">Backend: <strong>{{ llm_mode }}</strong></span>
+    </div>
+  </header>
+
+  <section class="welcome-section">
+    <div class="welcome-section-head">
+      <h2 class="welcome-h2">What a portfolio looks like</h2>
+      <span class="welcome-tag welcome-tag--example">Illustrative example</span>
+    </div>
+    <p class="welcome-fine welcome-fine--top">
+      Below is an <strong>example</strong> of the kind of portfolio PACT analyses &mdash; a
+      fictional mid-size company, <strong>{{ example.company }}</strong>. These are not the
+      figures loaded in this instance; your actual totals are what the Discovery agent
+      reports when you run the analysis.
+    </p>
+    <div class="welcome-stats welcome-stats--example">
+      <div class="welcome-stat welcome-stat--lead">
+        <div class="welcome-stat-value">{{ example.annual_spend | money }}</div>
+        <div class="welcome-stat-label">Annual spend</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ example.contracts }}</div>
+        <div class="welcome-stat-label">Contracts</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ example.circuits }}</div>
+        <div class="welcome-stat-label">Circuits</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ example.colo }}</div>
+        <div class="welcome-stat-label">Colocation</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ example.licenses }}</div>
+        <div class="welcome-stat-label">Licenses</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ example.mobile_lines }}</div>
+        <div class="welcome-stat-label">Mobile lines</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-value">{{ example.docs }}</div>
+        <div class="welcome-stat-label">Contract docs</div>
+      </div>
+    </div>
+    <p class="welcome-fine">
+      This instance runs on synthetic data modelled on 2026 market pricing &mdash; not a real
+      company's contracts. Uploading your own documents is planned, not yet built.
+    </p>
+  </section>
+
+  <section class="welcome-section">
+    <div class="welcome-section-head">
+      <h2 class="welcome-h2">The pipeline</h2>
+      <span class="welcome-tag">8 agents</span>
+    </div>
+    <p class="welcome-fine welcome-fine--top">
+      Discovery runs first, then four agents work in parallel, then Optimization. The Critic
+      can send weak recommendations back to be redone before the Narrator writes the summary.
+    </p>
+    <ol class="welcome-agents">
+      {% for name, description in agents %}
+      <li class="welcome-agent">
+        <span class="welcome-agent-num">{{ icon(agent_icons[loop.index0], 16) }}</span>
+        <div class="welcome-agent-body">
+          <div class="welcome-agent-name">{{ name }}</div>
+          <div class="welcome-agent-desc">{{ description }}</div>
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+</div>
+
+<script>
+  function resetRun() {
+    fetch("/api/reset", { method: "POST" })
+      .then(function () { window.location.href = "/welcome"; });
+  }
+</script>
+
+{% endblock %}

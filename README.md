@@ -151,7 +151,7 @@ whether it's actually good at reasoning or just a slow way to reformat text.
 **Key files:** `app/agents/extraction.py`, `optimization.py`, `critic.py`,
 `narrator.py`, `app/tools/llm_client.py`, `vector_store.py`.
 
-**First thing to check:** install Ollama (`docs/setup.md`), pull `qwen3:8b`
+**First thing to check:** install Ollama (`docs/setup.md`), pull `qwen3:1.7b`
 and `nomic-embed-text`, then run the pipeline once in `ollama` mode and once
 offline and compare the extraction/optimization output quality side by side.
 

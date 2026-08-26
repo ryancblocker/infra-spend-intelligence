@@ -11,7 +11,13 @@ from datetime import datetime, timedelta
 from app import config
 from app.agents.schemas import RenewalRisk
 from app.tools import dataset_tools
-from app.tools.llm_client import get_mode, plain_complete
+from app.tools.llm_client import UNTRUSTED_PREAMBLE, get_mode, plain_complete, wrap_untrusted
+
+RENEWAL_SYSTEM_PROMPT = (
+    "You are a contracts manager. Write a tight 2-3 sentence renewal risk briefing "
+    "for an executive summary. No preamble, no headers."
+    "\n\n" + UNTRUSTED_PREAMBLE
+)
 
 
 def _reference_date() -> datetime:
@@ -93,10 +99,13 @@ def _renewal_narrative(risks: list[RenewalRisk]) -> str:
             f"notice window closing: {r.notice_window_closing}, ${r.annual_cost:,.0f}/yr"
             for r in risks[:12]
         )
+        # contract_label is vendor + service_type, which for an uploaded
+        # contract are raw regex captures off a user-supplied document. Delimit
+        # them the same way extraction and /api/ask delimit retrieved clause
+        # text: this is third-party data about a contract, never an instruction.
         result = plain_complete(
-            system="You are a contracts manager. Write a tight 2-3 sentence renewal risk briefing "
-                   "for an executive summary. No preamble, no headers.",
-            user=f"Upcoming renewal risk items:\n{lines}",
+            system=RENEWAL_SYSTEM_PROMPT,
+            user=f"Upcoming renewal risk items:\n{wrap_untrusted(lines)}",
         )
         if result:
             return result.strip()

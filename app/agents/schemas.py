@@ -40,6 +40,11 @@ class ContractTerms(BaseModel):
     termination_fee_pct: float | None = None
     annual_escalator_pct: float | None = None
     minimum_commitment: str = ""
+    # The contract states its price; reading a written-down number is extraction,
+    # not calculation. Every *derived* figure stays in Python - see
+    # extraction.reconcile_costs.
+    monthly_cost: float | None = None
+    annual_cost: float | None = None
     sla_summary: str = ""
     liability_cap_summary: str = ""
     has_mfn_clause: bool = False
@@ -64,6 +69,8 @@ class ExtractedContract(BaseModel):
     termination_fee_pct: float | None = None
     annual_escalator_pct: float | None = None
     minimum_commitment: str = ""
+    monthly_cost: float | None = None
+    annual_cost: float | None = None
     sla_summary: str = ""
     liability_cap_summary: str = ""
     has_mfn_clause: bool = False
@@ -146,3 +153,9 @@ class PipelineRunSummary(BaseModel):
     top_risks: list[str] = Field(default_factory=list)
     immediate_actions: list[str] = Field(default_factory=list)
     critic_flags: list[CriticFlag] = Field(default_factory=list)
+    # How the optimization step actually produced its recommendations: only
+    # the highest-impact findings are reasoned about by the model (see
+    # config.MAX_LLM_SCENARIOS); the rest use the deterministic rule engine.
+    # Surfaced so the UI never implies every scenario was model-reasoned.
+    scenarios_llm_reasoned: int = 0
+    scenarios_deterministic: int = 0

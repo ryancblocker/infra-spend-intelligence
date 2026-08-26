@@ -21,12 +21,25 @@ brew install ollama
 ollama serve &                      # or open the Ollama app
 
 # pull the default chat + embedding models
-ollama pull qwen3:8b
+ollama pull qwen3:1.7b
 ollama pull nomic-embed-text
 ```
 
-To use a different model (e.g. a smaller one on constrained hardware, or
-`llama3.1:8b`), set:
+`qwen3:1.7b` (not a larger sibling) is the app's actual default
+(`app/config.py`), sized deliberately for an 8 GB unified-memory Mac -
+`qwen3:8b` leaves too little headroom for the OS and has hung machines
+outright when the pipeline runs several LLM calls back to back. Only pull
+`qwen3:8b` (and set `PACT_OLLAMA_MODEL=qwen3:8b`) if your machine has real
+memory headroom beyond 8 GB.
+
+**Expect it to be slow, and that's normal.** Against `qwen3:1.7b` on a
+constrained machine, individual LLM calls run ~15-95s each, and a full
+pipeline run (up to 15 optimization calls plus extraction/critic/narrator)
+takes several minutes - `app/config.py`'s `PIPELINE_TIMEOUT_SECONDS` gives it
+a 10-minute ceiling before it's actually treated as hung. A UI showing
+progress for minutes at a time is the model thinking, not something broken.
+
+To use a different local model, set:
 
 ```bash
 export PACT_OLLAMA_MODEL=llama3.1:8b
@@ -34,7 +47,10 @@ export PACT_OLLAMA_MODEL=llama3.1:8b
 
 ### Cloud fallback instead of local
 
-If you'd rather use Anthropic's API instead of a local model:
+If you'd rather use Anthropic's API instead of a local model - notably
+faster per call (seconds, not tens of seconds) since it runs on Anthropic's
+servers instead of your machine, at the cost of a per-call API charge and no
+longer being fully local/offline for that run:
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...

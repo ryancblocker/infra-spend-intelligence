@@ -281,7 +281,12 @@ def plain_complete(system: str, user: str, agent: str = "unknown") -> str | None
 def embed_texts(texts: list[str]) -> list[list[float]]:
     if get_mode() == "ollama":
         try:
-            response = _ollama_client().embed(model=config.OLLAMA_EMBED_MODEL, input=texts)
+            # keep_alive=0 evicts the embedding model as soon as the batch is
+            # done. Indexing runs immediately before extraction, and holding
+            # both models resident is what pushes a small machine into swap.
+            response = _ollama_client().embed(
+                model=config.OLLAMA_EMBED_MODEL, input=texts, keep_alive=0,
+            )
             return [list(vec) for vec in response["embeddings"]]
         except Exception:
             pass

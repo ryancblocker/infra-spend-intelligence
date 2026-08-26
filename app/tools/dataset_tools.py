@@ -66,6 +66,21 @@ def fetch_benchmarks() -> dict[str, float]:
     return {row["category"]: float(row["benchmark_rate"]) for row in rows}
 
 
+def update_benchmark_rates(rates: dict[str, float]) -> None:
+    """Overwrite specific benchmark_rate rows by category. Only categories
+    present in `rates` are touched - every other category (including ones
+    with no scraped source, see pricing_scraper.SOURCES) keeps its seeded
+    value untouched."""
+    if not rates:
+        return
+    with connection() as conn:
+        conn.executemany(
+            "UPDATE benchmark_rates SET benchmark_rate = ? WHERE category = ?",
+            [(rate, category) for category, rate in rates.items()],
+        )
+        conn.commit()
+
+
 def fetch_child_assets(contract_id: str) -> dict[str, list[dict]]:
     """All granular assets (circuits/colo/licenses/mobile) tied to one contract."""
     return {
@@ -92,6 +107,97 @@ def portfolio_totals() -> dict:
     return {
         "total_annual_spend": round(float(total_annual), 2),
         "total_monthly_spend": round(float(total_annual) / 12, 2),
-        "spend_by_category": {row["service_type"]: round(float(row["total"]), 2) for row in by_category},
+        # row["total"] can be NULL when every contract in that service_type group
+        # has no stated annual_cost - an uploaded contract whose document never
+        # names a fee is a real, expected case, not just a test artifact.
+        "spend_by_category": {row["service_type"]: round(float(row["total"] or 0), 2) for row in by_category},
         "asset_counts": counts,
     }
+
+
+# ---------------------------------------------------------------------------
+# Uploaded contracts
+# ---------------------------------------------------------------------------
+
+
+def ensure_source_column() -> None:
+    """Add contracts.source to databases created before uploads existed, so an
+    existing runtime/pact.db upgrades in place rather than needing a reseed."""
+    with connection() as conn:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(contracts)")}
+        if "source" not in columns:
+            conn.execute("ALTER TABLE contracts ADD COLUMN source TEXT DEFAULT 'seed'")
+            conn.execute("UPDATE contracts SET source = 'seed' WHERE source IS NULL")
+            conn.commit()
+
+
+def upsert_upload_row(record, original_filename: str = "") -> None:
+    """Insert or replace the contracts row derived from an uploaded document.
+
+    Only the columns an actual contract document can support are populated.
+    Utilization-derived columns stay NULL - see the waste agent, which reports
+    uploads as unavailable rather than inventing numbers for them.
+
+    original_filename is optional and comes from the upload manifest, not the
+    ExtractedContract record itself (extraction never sees a filename). When
+    extraction recovers no vendor, the row is labelled with that filename
+    instead of a bare "Unknown vendor" placeholder, so the person who
+    uploaded the document can still recognise which row is theirs - the same
+    fallback the upload card and its live-added row already use (see
+    app.js's addRow and mission_control.html's upload list). The row is
+    already flagged low_confidence in the UI whenever this fallback applies,
+    so labelling it with the filename asserts nothing about who the vendor
+    actually is. "Unknown vendor" remains the fallback when no filename is
+    available either - e.g. a record built directly by a test or by
+    seed_db's rehydration before this parameter existed.
+
+    owner is set to the "Uploaded" placeholder below purely so list/detail
+    views have something to display - it is not load-bearing for correctness.
+    waste.py skips uploaded contracts by contract_id (via fetch_upload_ids()),
+    not by checking whether owner is non-empty, so blanking or removing this
+    placeholder later will not resurrect a fabricated contract_owner_gap
+    finding for a document that never had utilization telemetry."""
+    ensure_source_column()
+    vendor = record.vendor or original_filename or "Unknown vendor"
+    with connection() as conn:
+        conn.execute("DELETE FROM contracts WHERE contract_id = ?", (record.contract_id,))
+        conn.execute(
+            """INSERT INTO contracts
+               (contract_id, vendor, service_type, start_date, end_date, annual_cost,
+                monthly_cost, auto_renew, notice_days, termination_fee_pct,
+                escalation_pct, owner, status, region, minimum_commitment, source)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'upload')""",
+            (
+                record.contract_id,
+                vendor,
+                record.category or "Uploaded contract",
+                "",
+                record.renewal_date or "",
+                record.annual_cost,
+                record.monthly_cost,
+                "Yes" if record.auto_renew else "No",
+                record.notice_period_days,
+                record.termination_fee_pct,
+                record.annual_escalator_pct,
+                "Uploaded",
+                "Active",
+                "",
+                record.minimum_commitment or "",
+            ),
+        )
+        conn.commit()
+
+
+def delete_upload_row(contract_id: str) -> None:
+    ensure_source_column()
+    with connection() as conn:
+        conn.execute(
+            "DELETE FROM contracts WHERE contract_id = ? AND source = 'upload'",
+            (contract_id,),
+        )
+        conn.commit()
+
+
+def fetch_upload_ids() -> set[str]:
+    ensure_source_column()
+    return {row["contract_id"] for row in _rows("SELECT contract_id FROM contracts WHERE source = 'upload'")}

@@ -6,9 +6,20 @@ dollar figure, only judgment: which action, how confident, why, and what to
 say in a renegotiation conversation. That split is what keeps this agent
 grounded rather than a plausible-sounding hallucination machine (the critic
 agent double-checks it anyway).
+
+Two things bound how much of this agent's work touches the LLM at all, per
+config.MAX_LLM_SCENARIOS's docstring: a per-run cap on how many findings get
+an LLM-generated judgement (highest estimated_annual_savings first - everyone
+else gets the deterministic rule engine, so no finding silently disappears),
+and a cache (below) keyed on a finding's identity plus the cost figures that
+determine its prompt, so a fixed portfolio's judgements are reasoned about
+once and reused, not re-derived every run.
 """
 
 from __future__ import annotations
+
+import hashlib
+import json
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +29,6 @@ from app.tools import dataset_tools
 from app.tools.llm_client import chat_structured, get_mode
 
 HORIZON_MONTHS = 36
-TOP_N_FOR_LLM_JUDGMENT = 15
 
 
 class OptimizationJudgment(BaseModel):
@@ -47,7 +57,7 @@ def run(findings: list[Finding]) -> list[ScenarioResult]:
     scored.sort(key=lambda pair: pair[1].estimated_annual_savings, reverse=True)
 
     results: list[ScenarioResult] = []
-    llm_budget = TOP_N_FOR_LLM_JUDGMENT
+    llm_budget = config.MAX_LLM_SCENARIOS
 
     for action, finding in scored:
         contract = contracts_by_id.get(finding.contract_id, {})
@@ -56,8 +66,11 @@ def run(findings: list[Finding]) -> list[ScenarioResult]:
         judgment = None
         is_high_value = finding.estimated_annual_savings >= config.HIGH_VALUE_THRESHOLD or action["risk_level"] == "High"
         if is_high_value and llm_budget > 0 and get_mode() != "offline":
-            judgment = _llm_judgment(finding, keep_cost, cancel_cost, renegotiate_cost,
-                                     projected_savings)
+            # `scored` is sorted by estimated_annual_savings above, so the
+            # budget is always spent on the highest-impact findings first,
+            # never by table order.
+            judgment = _cached_llm_judgment(finding, keep_cost, cancel_cost, renegotiate_cost,
+                                            projected_savings)
             llm_budget -= 1
 
         recommended_action = judgment.recommended_action if judgment else action["recommended_action"]
@@ -231,6 +244,22 @@ def _cost_scenarios(finding: Finding, contract: dict) -> tuple[float, float, flo
     return keep_cost, cancel_cost, renegotiate_cost, projected_savings, break_even
 
 
+def _cached_llm_judgment(finding: Finding, keep_cost: float, cancel_cost: float,
+                          renegotiate_cost: float, projected_savings: float) -> OptimizationJudgment | None:
+    """The only caller that ever consults the scenario cache - the initial
+    judgement for a finding, which is a pure function of the finding's
+    identity and its (deterministically computed) cost figures. `revise()`
+    deliberately never calls this: see its docstring for why."""
+    key = cache_key(finding, keep_cost, cancel_cost, renegotiate_cost, projected_savings)
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
+    judgment = _llm_judgment(finding, keep_cost, cancel_cost, renegotiate_cost, projected_savings)
+    if judgment is not None:
+        _cache_put(key, judgment)
+    return judgment
+
+
 def _llm_judgment(finding: Finding, keep_cost: float, cancel_cost: float, renegotiate_cost: float,
                    projected_savings: float) -> OptimizationJudgment | None:
     user = (
@@ -242,4 +271,67 @@ def _llm_judgment(finding: Finding, keep_cost: float, cancel_cost: float, renego
         f"36-month projection - keep: ${keep_cost:,.0f}, cancel: ${cancel_cost:,.0f}, "
         f"renegotiate: ${renegotiate_cost:,.0f}, projected savings: ${projected_savings:,.0f}"
     )
-    return chat_structured(system=JUDGMENT_SYSTEM_PROMPT, user=user, schema=OptimizationJudgment)
+    return chat_structured(system=JUDGMENT_SYSTEM_PROMPT, user=user, schema=OptimizationJudgment,
+                           agent="optimization-judgment")
+
+
+# ---------------------------------------------------------------------------
+# Scenario cache - same shape as extraction.py's cache (cache_key/load_cache/
+# save_cache), keyed so a changed finding, changed cost figures, or a
+# different model invalidates cleanly. Only the model's judgement is cached -
+# never the cost figures, which are always recomputed fresh above regardless
+# of a cache hit, preserving the deterministic-dollars-never-cached-as-if-
+# they-were-a-model-output boundary this module is built around.
+#
+# revise() never reads or writes this cache. A critique is per-run context,
+# not part of a finding's identity, so a cache keyed on identity alone would
+# either miss it entirely or - worse - serve a stale pre-revision judgement to
+# a future run that re-derives the same critique. Revisions are always a
+# fresh LLM call.
+# ---------------------------------------------------------------------------
+
+
+def cache_key(finding: Finding, keep_cost: float, cancel_cost: float,
+              renegotiate_cost: float, projected_savings: float) -> str:
+    raw = (
+        f"{finding.finding_id}|{finding.category}|{finding.issue}|"
+        f"{finding.current_monthly_cost}|{finding.estimated_annual_savings}|"
+        f"{round(keep_cost, 2)}|{round(cancel_cost, 2)}|{round(renegotiate_cost, 2)}|"
+        f"{round(projected_savings, 2)}|{config.OLLAMA_CHAT_MODEL}|{get_mode()}"
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def load_cache() -> dict:
+    try:
+        return json.loads(config.SCENARIO_CACHE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_cache(cache: dict) -> None:
+    try:
+        config.ensure_runtime_dirs()
+        config.SCENARIO_CACHE_PATH.write_text(json.dumps(cache), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _cache_get(key: str) -> OptimizationJudgment | None:
+    if not config.SCENARIO_CACHE_ENABLED:
+        return None
+    payload = load_cache().get(key)
+    if payload is None:
+        return None
+    try:
+        return OptimizationJudgment.model_validate(payload)
+    except Exception:
+        return None
+
+
+def _cache_put(key: str, judgment: OptimizationJudgment) -> None:
+    if not config.SCENARIO_CACHE_ENABLED:
+        return
+    cache = load_cache()
+    cache[key] = judgment.model_dump(mode="json")
+    save_cache(cache)
