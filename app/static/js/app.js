@@ -40,21 +40,53 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// --- Global stores ---
+// Demo mode lives in a store (not a page-local Alpine component) because
+// its toggle sits in the sidenav footer - present on every page - while
+// only Mission Control's pipelineRunner() actually consumes it.
+
+document.addEventListener("alpine:init", () => {
+  let storedDemoMode = false;
+  try { storedDemoMode = localStorage.getItem("pact-demo-mode") === "1"; } catch (e) { /* ignore */ }
+
+  Alpine.store("pact", {
+    demoMode: storedDemoMode,
+    persistDemoMode() {
+      try { localStorage.setItem("pact-demo-mode", this.demoMode ? "1" : "0"); } catch (e) { /* ignore */ }
+    },
+  });
+});
+
 // --- Pipeline run (Mission Control) ---
 
 function pipelineRunner() {
   const nodeOrder = ["discovery", "extraction", "waste", "benchmark", "renewal", "optimization", "critic", "narrator"];
+
   return {
     running: false,
     nodes: nodeOrder.map((id) => ({ id, status: "pending", detail: "" })),
     log: [],
+    // The pipeline diagram (Mission Control) renders each agent as its own
+    // hardcoded node - so it can give each one a distinct icon - rather than
+    // Alpine's x-for over `nodes`. These read the same reactive array by id.
+    statusOf(id) {
+      const n = this.nodes.find((x) => x.id === id);
+      return n ? n.status : "pending";
+    },
+    detailOf(id) {
+      const n = this.nodes.find((x) => x.id === id);
+      return n ? n.detail : "";
+    },
+    allDone(ids) {
+      return ids.every((id) => this.statusOf(id) === "done");
+    },
     start() {
       if (this.running) return;
       this.running = true;
       this.nodes.forEach((n) => { n.status = "pending"; n.detail = ""; });
       this.log = [];
 
-      const source = new EventSource("/api/run");
+      const source = new EventSource(this.$store.pact.demoMode ? "/api/run?demo=true" : "/api/run");
       source.onmessage = (evt) => {
         const data = JSON.parse(evt.data);
         const node = this.nodes.find((n) => n.id === data.node);

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon, category_icon %}
 {% block title %}Findings{% endblock %}
 {% block content %}
 
@@ -11,8 +12,22 @@
 
 {% if category_rows %}
 <div class="card" style="margin-bottom:24px;">
-  <div class="section-title">Savings Opportunity by Category</div>
-  <div style="height:280px;"><canvas id="categoryChart"></canvas></div>
+  <div class="section-title">{{ icon("bar-chart", 15) }} Savings Opportunity by Category</div>
+  {% set max_savings = category_rows[0].annual_savings %}
+  <div class="category-bars">
+    {% for row in category_rows %}
+    <div class="category-bar-row">
+      <div class="category-bar-label">
+        <span class="category-bar-name">{{ category_icon(row.category) }} {{ row.category | replace('_', ' ') }}</span>
+        <span class="category-bar-count">{{ row.count }} finding{{ 's' if row.count != 1 else '' }}</span>
+      </div>
+      <div class="category-bar-track">
+        <div class="category-bar-fill" style="width: {{ ((row.annual_savings / max_savings * 100) if max_savings else 0) | round(1) }}%;"></div>
+      </div>
+      <div class="category-bar-value figures">{{ row.annual_savings | money }}</div>
+    </div>
+    {% endfor %}
+  </div>
 </div>
 {% endif %}
 
@@ -37,7 +52,7 @@
       {% for f in findings %}
       <tr data-search="{{ f.category }} {{ f.asset_id }} {{ f.contract_id }} {{ f.issue }}">
         <td class="figures">{{ f.finding_id }}</td>
-        <td>{{ f.category | replace('_', ' ') }}</td>
+        <td style="display:flex; align-items:center; gap:7px;">{{ category_icon(f.category) }}{{ f.category | replace('_', ' ') }}</td>
         <td>
           {% if f.contract_id %}<a class="row-link" href="/contracts/{{ f.contract_id }}">{{ f.asset_id }}</a>{% else %}{{ f.asset_id }}{% endif %}
         </td>
@@ -52,33 +67,4 @@
   </table>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
-{% if category_rows %}
-<script>
-const categoryData = {{ category_rows | tojson }};
-new Chart(document.getElementById('categoryChart'), {
-  type: 'bar',
-  data: {
-    labels: categoryData.map(r => r.category.replace(/_/g, ' ')),
-    datasets: [{
-      label: 'Annual savings opportunity',
-      data: categoryData.map(r => r.annual_savings),
-      backgroundColor: '#ff8a1e',
-      borderRadius: 6,
-      maxBarThickness: 36,
-    }],
-  },
-  options: {
-    indexAxis: 'y',
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: '#7a8089', callback: (v) => '$' + v.toLocaleString() }, grid: { color: 'rgba(255,255,255,0.06)' } },
-      y: { ticks: { color: '#b7bcc4' }, grid: { display: false } },
-    },
-  },
-});
-</script>
-{% endif %}
 {% endblock %}

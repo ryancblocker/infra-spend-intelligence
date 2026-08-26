@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Overview{% endblock %}
 {% block content %}
 
@@ -11,51 +12,94 @@
 
 <div class="kpi-grid">
   <div class="kpi-card">
-    <div class="kpi-label">Total Annual Spend</div>
+    <div class="kpi-label">{{ icon("banknote", 14) }} Total Annual Spend</div>
     <div class="kpi-value figures" data-countup="{{ totals.total_annual_spend }}" data-prefix="$">$0</div>
     <div class="kpi-sub">{{ totals.asset_counts.contracts }} contracts under management</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Potential Annual Savings</div>
+    <div class="kpi-label">{{ icon("trend-down", 14) }} Potential Annual Savings</div>
     <div class="kpi-value accent figures" data-countup="{{ summary.total_potential_annual_savings if summary else 0 }}" data-prefix="$">$0</div>
     <div class="kpi-sub">{{ summary.number_of_findings if summary else 0 }} findings identified</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">High Renewal Risk</div>
+    <div class="kpi-label">{{ icon("alert-triangle", 14) }} High Renewal Risk</div>
     <div class="kpi-value figures">{{ summary.high_risk_contracts if summary else "—" }}</div>
     <div class="kpi-sub">contracts inside their notice window or renewing soon</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Portfolio Assets</div>
+    <div class="kpi-label">{{ icon("layers", 14) }} Portfolio Assets</div>
     <div class="kpi-value figures">{{ totals.asset_counts.circuits + totals.asset_counts.colo + totals.asset_counts.licenses + totals.asset_counts.mobile_lines }}</div>
     <div class="kpi-sub">circuits, colocation, licenses &amp; mobile lines</div>
   </div>
 </div>
 
 <div class="card" style="margin-bottom:24px;" x-data="pipelineRunner()">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-    <div class="section-title" style="margin:0;">Agent Pipeline</div>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:12px;">
+    <div class="section-title" style="margin:0;">{{ icon("nodes", 15) }} Agent Pipeline</div>
     <button class="btn btn-primary" @click="start()" :disabled="running">
       <span x-show="!running">{% if has_run %}Re-run Analysis{% else %}Run Analysis{% endif %}</span>
       <span x-show="running">Running…</span>
     </button>
   </div>
 
-  <div class="pipeline-rail">
-    <template x-for="(node, idx) in nodes" :key="node.id">
-      <span style="display:contents;">
-        <div class="pipeline-node" :class="node.status">
-          <div class="pipeline-node-dot">
-            <span x-show="node.status === 'pending'">·</span>
-            <span x-show="node.status === 'running'">…</span>
-            <span x-show="node.status === 'done'">✓</span>
-          </div>
-          <div class="pipeline-node-label" x-text="node.id.charAt(0).toUpperCase() + node.id.slice(1)"></div>
-          <div class="pipeline-node-detail" x-text="node.detail"></div>
+  <p class="page-subtitle" style="margin:0 0 10px 0; font-size:12px;" x-show="$store.pact.demoMode" x-cloak>
+    Demo mode is on (toggle it in the sidebar) - the next run replays the pipeline against the seeded portfolio with the offline agents only, no LLM calls, done in seconds. Good for recording a walkthrough.
+  </p>
+
+  <div class="pipeline-diagram">
+    <div class="pipeline-node pipeline-solo" :class="statusOf('discovery')">
+      <div class="pipeline-node-dot">{{ icon("search", 20) }}</div>
+      <div class="pipeline-node-label">Discovery</div>
+      <div class="pipeline-node-detail" x-text="detailOf('discovery')"></div>
+    </div>
+    <div class="pipeline-stem" :class="statusOf('discovery') === 'done' ? 'done' : ''"></div>
+
+    <div class="pipeline-fanout-label">4 agents run in parallel</div>
+    <div class="pipeline-fanout" :class="allDone(['extraction','waste','benchmark','renewal']) ? 'all-done' : ''">
+      <div class="pipeline-fanout-row">
+        <div class="pipeline-node" :class="statusOf('extraction')">
+          <div class="pipeline-node-dot">{{ icon("file-text", 20) }}</div>
+          <div class="pipeline-node-label">Extraction</div>
+          <div class="pipeline-node-detail" x-text="detailOf('extraction')"></div>
         </div>
-        <div class="pipeline-connector" x-show="idx < nodes.length - 1"></div>
-      </span>
-    </template>
+        <div class="pipeline-node" :class="statusOf('waste')">
+          <div class="pipeline-node-dot">{{ icon("trash", 20) }}</div>
+          <div class="pipeline-node-label">Waste</div>
+          <div class="pipeline-node-detail" x-text="detailOf('waste')"></div>
+        </div>
+        <div class="pipeline-node" :class="statusOf('benchmark')">
+          <div class="pipeline-node-dot">{{ icon("bar-chart", 20) }}</div>
+          <div class="pipeline-node-label">Benchmark</div>
+          <div class="pipeline-node-detail" x-text="detailOf('benchmark')"></div>
+        </div>
+        <div class="pipeline-node" :class="statusOf('renewal')">
+          <div class="pipeline-node-dot">{{ icon("calendar", 20) }}</div>
+          <div class="pipeline-node-label">Renewal</div>
+          <div class="pipeline-node-detail" x-text="detailOf('renewal')"></div>
+        </div>
+      </div>
+    </div>
+    <div class="pipeline-stem" :class="allDone(['extraction','waste','benchmark','renewal']) ? 'done' : ''"></div>
+
+    <div class="pipeline-node pipeline-solo" :class="statusOf('optimization')">
+      <div class="pipeline-node-dot">{{ icon("sliders", 20) }}</div>
+      <div class="pipeline-node-label">Optimization</div>
+      <div class="pipeline-node-detail" x-text="detailOf('optimization')"></div>
+    </div>
+    <div class="pipeline-stem" :class="statusOf('optimization') === 'done' ? 'done' : ''"></div>
+
+    <div class="pipeline-node pipeline-solo" :class="statusOf('critic')">
+      <div class="pipeline-node-dot">{{ icon("shield-check", 20) }}</div>
+      <div class="pipeline-node-label">Critic</div>
+      <div class="pipeline-node-detail" x-text="detailOf('critic')"></div>
+    </div>
+    <div class="pipeline-stem" :class="statusOf('critic') === 'done' ? 'done' : ''"></div>
+
+    <div class="pipeline-node pipeline-solo" :class="statusOf('narrator')">
+      <div class="pipeline-node-dot">{{ icon("sparkles", 20) }}</div>
+      <div class="pipeline-node-label">Narrator</div>
+      <div class="pipeline-node-detail" x-text="detailOf('narrator')"></div>
+    </div>
   </div>
 
   {% if not has_run %}
@@ -65,11 +109,11 @@
 
 {% if summary %}
 <div class="card" style="margin-bottom:24px;">
-  <div class="section-title">Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
+  <div class="section-title">{{ icon("sparkles", 15) }} Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else ('demo' if summary.llm_mode == 'demo' else 'critical') }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
   <p style="font-size:15px; line-height:1.6; margin:0;">{{ summary.executive_summary }}</p>
   {% if critic_flags %}
   <div style="margin-top:14px;">
-    <div class="section-title">Critic Flags</div>
+    <div class="section-title">{{ icon("shield-check", 15) }} Critic Flags</div>
     {% for f in critic_flags[:5] %}
     <div class="flag-row">
       <span class="badge badge-{{ 'critical' if f.severity == 'error' else ('warning' if f.severity == 'warning' else 'neutral') }}">{{ f.severity }}</span>
@@ -83,7 +127,7 @@
 
 <div class="grid-2">
   <div class="card">
-    <div class="section-title">Top Savings Opportunities</div>
+    <div class="section-title">{{ icon("trend-down", 15) }} Top Savings Opportunities</div>
     {% if top_scenarios %}
       {% for s in top_scenarios %}
       <a class="feed-row" href="/contracts/{{ s.contract_id }}" style="text-decoration:none; color:inherit;">
@@ -95,12 +139,12 @@
       </a>
       {% endfor %}
     {% else %}
-      <div class="empty-state">Run the pipeline to see ranked opportunities.</div>
+      <div class="empty-state">{{ icon("inbox", 26) }}<div>Run the pipeline to see ranked opportunities.</div></div>
     {% endif %}
   </div>
 
   <div class="card">
-    <div class="section-title">Upcoming Renewals</div>
+    <div class="section-title">{{ icon("calendar", 15) }} Upcoming Renewals</div>
     {% if renewal_risks %}
       {% for r in renewal_risks %}
       <a class="feed-row" href="/contracts/{{ r.contract_id }}" style="text-decoration:none; color:inherit;">
@@ -114,7 +158,7 @@
       </a>
       {% endfor %}
     {% else %}
-      <div class="empty-state">Run the pipeline to see renewal risk.</div>
+      <div class="empty-state">{{ icon("inbox", 26) }}<div>Run the pipeline to see renewal risk.</div></div>
     {% endif %}
   </div>
 </div>

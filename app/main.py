@@ -26,6 +26,7 @@ from app import config, views  # noqa: E402
 from app.data import seed_db  # noqa: E402
 from app.orchestrator import persistence  # noqa: E402
 from app.orchestrator.events import DONE_SENTINEL, emit, emit_done, new_queue  # noqa: E402
+from app.orchestrator.demo import run_demo_pipeline  # noqa: E402
 from app.orchestrator.graph import run_pipeline  # noqa: E402
 from app.orchestrator.state import PipelineState  # noqa: E402
 from app.tools import dataset_tools, vector_store  # noqa: E402
@@ -56,10 +57,14 @@ def on_startup() -> None:
     if not config.DB_PATH.exists():
         print("[PACT] No database found - seeding from app/data/seed/ on first run...")
         seed_db.build_database()
-        try:
+
+    try:
+        if vector_store.index_needs_rebuild():
+            print("[PACT] Vector index missing or built with a different embedding "
+                  "backend - rebuilding...")
             vector_store.build_index()
-        except Exception as exc:
-            print(f"[PACT] Vector index build skipped: {exc}")
+    except Exception as exc:
+        print(f"[PACT] Vector index build skipped: {exc}")
 
     loaded = persistence.load_run()
     if loaded:
@@ -164,7 +169,7 @@ def api_runs():
     return {"runs": persistence.list_runs()}
 
 
-async def _execute_pipeline(q: "queue_module.Queue") -> None:
+async def _execute_pipeline(q: "queue_module.Queue", demo: bool = False) -> None:
     """Owns the pipeline's actual lifecycle - runs independently of whichever
     client's SSE connection happens to be watching it. A dropped connection
     (client timeout, closed tab) must not orphan a run mid-flight: real
@@ -181,9 +186,10 @@ async def _execute_pipeline(q: "queue_module.Queue") -> None:
     left held.
     """
     global _LAST_RUN
+    pipeline_fn = run_demo_pipeline if demo else run_pipeline
     try:
         final_state = await asyncio.wait_for(
-            asyncio.to_thread(run_pipeline, q), timeout=config.PIPELINE_TIMEOUT_SECONDS
+            asyncio.to_thread(pipeline_fn, q), timeout=config.PIPELINE_TIMEOUT_SECONDS
         )
         _LAST_RUN = final_state
         persistence.save_run(final_state)
@@ -203,12 +209,12 @@ async def _execute_pipeline(q: "queue_module.Queue") -> None:
 
 
 @app.get("/api/run")
-async def api_run():
+async def api_run(demo: bool = False):
     if not _RUN_LOCK.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="A pipeline run is already in progress")
 
     q = new_queue()
-    asyncio.create_task(_execute_pipeline(q))
+    asyncio.create_task(_execute_pipeline(q, demo))
 
     async def event_stream():
         ok = True

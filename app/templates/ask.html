@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Ask PACT{% endblock %}
 {% block content %}
 
@@ -13,13 +14,16 @@
   <div x-ref="scrollbox" style="flex:1; overflow-y:auto; padding-right:6px;">
     <template x-if="messages.length === 0">
       <div class="empty-state">
-        Try: "Which contracts have the highest termination fees?" or "What's the notice period on our colocation agreements?"
+        {{ icon("message", 26) }}
+        <div>Try: "Which contracts have the highest termination fees?" or "What's the notice period on our colocation agreements?"</div>
       </div>
     </template>
     <template x-for="(m, i) in messages" :key="i">
       <div style="margin-bottom:16px;">
-        <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); margin-bottom:4px;"
-             x-text="m.role === 'user' ? 'You' : 'PACT'"></div>
+        <div style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); margin-bottom:4px;">
+          <span x-show="m.role !== 'user'">{{ icon('nodes', 12) }}</span>
+          <span x-text="m.role === 'user' ? 'You' : 'PACT'"></span>
+        </div>
         <div style="font-size:14px; line-height:1.6; white-space:pre-wrap;" x-text="m.text"></div>
         <template x-if="m.sources && m.sources.length">
           <div class="chip-row" style="margin-top:8px;">
@@ -36,7 +40,7 @@
   <form @submit.prevent="send()" style="display:flex; gap:10px; margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
     <input class="searchbox" style="max-width:none; flex:1;" type="text" x-model="question"
            placeholder="Ask about renewal terms, fees, SLAs, negotiation levers…" :disabled="asking">
-    <button class="btn btn-primary" type="submit" :disabled="asking || !question.trim()">Ask</button>
+    <button class="btn btn-primary" type="submit" :disabled="asking || !question.trim()">{{ icon('send', 15) }} Ask</button>
   </form>
 </div>
 

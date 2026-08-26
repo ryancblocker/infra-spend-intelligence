@@ -114,18 +114,30 @@ a { color: inherit; }
   flex: 1;
 }
 
-@media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; }
-  .sidenav { display: none; }
-}
-
 .sidenav {
+  /* Pinned to the viewport, not the page: .shell is a grid whose row
+     stretches to match .main's content height, so without this the
+     sidenav grows just as tall and its footer (theme/demo toggle) scrolls
+     out of view along with the page. Sticky + a viewport-capped height
+     keeps it in place and self-contained instead. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
   background: var(--surface-1);
   border-right: 1px solid var(--border);
   padding: 20px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Below the .sidenav rule on purpose: same specificity as the base rule
+   above, so source order is what makes this override win once the media
+   query is active. */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidenav { display: none; }
 }
 
 .brand {
@@ -142,6 +154,17 @@ a { color: inherit; }
   background: linear-gradient(135deg, var(--brand), var(--brand-strong));
   flex-shrink: 0;
   box-shadow: 0 0 0 1px var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-ink);
+}
+
+/* --- icon system --- */
+
+.icon {
+  flex-shrink: 0;
+  vertical-align: -3px;
 }
 
 .brand-title {
@@ -180,6 +203,16 @@ a { color: inherit; }
   font-size: 11px;
   color: var(--ink-muted);
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-footer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .mode-pill {
@@ -193,7 +226,7 @@ a { color: inherit; }
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  margin-top: 6px;
+  width: fit-content;
 }
 .mode-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-good); }
 .mode-pill.offline .mode-dot { background: var(--status-warning); }
@@ -213,7 +246,7 @@ a { color: inherit; }
   flex-wrap: wrap;
 }
 
-.page-title { font-size: 26px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 4px 0; }
+.page-title { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 4px 0; }
 .page-subtitle { color: var(--ink-secondary); font-size: 14px; margin: 0; max-width: 640px; }
 
 /* --- buttons --- */
@@ -241,6 +274,21 @@ a { color: inherit; }
 }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
+/* --- toggle switch (e.g. Demo Mode) --- */
+
+.switch-row { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-secondary); cursor: pointer; user-select: none; }
+.switch { position: relative; display: inline-block; width: 34px; height: 20px; flex: 0 0 auto; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch-track { position: absolute; inset: 0; background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 999px; transition: background 0.15s ease, border-color 0.15s ease; }
+.switch-thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink-secondary); transition: transform 0.15s ease, background 0.15s ease; }
+.switch input:checked + .switch-track { background: var(--brand); border-color: transparent; }
+.switch input:checked + .switch-track .switch-thumb { transform: translateX(14px); background: var(--brand-ink); }
+.switch input:disabled + .switch-track { opacity: 0.5; cursor: not-allowed; }
+.switch-row:has(input:disabled) { cursor: not-allowed; }
+
+[x-cloak] { display: none !important; }
+
+
 /* --- cards & KPIs --- */
 
 .card {
@@ -266,6 +314,9 @@ a { color: inherit; }
   overflow: hidden;
 }
 .kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -300,6 +351,7 @@ a { color: inherit; }
 .badge-serious { background: var(--status-serious-bg); color: var(--status-serious); }
 .badge-critical { background: var(--status-critical-bg); color: var(--status-critical); }
 .badge-neutral { background: var(--surface-3); color: var(--ink-secondary); }
+.badge-demo { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
 
 /* --- tables --- */
 
@@ -333,13 +385,6 @@ tbody a.row-link:hover { color: var(--brand); }
 
 /* --- pipeline visualization --- */
 
-.pipeline-rail {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  overflow-x: auto;
-  padding: 4px 2px 12px 2px;
-}
 .pipeline-node {
   flex: 0 0 auto;
   display: flex;
@@ -381,8 +426,163 @@ tbody a.row-link:hover { color: var(--brand); }
 .pipeline-node.done .pipeline-node-label,
 .pipeline-node.running .pipeline-node-label { color: var(--ink-primary); }
 .pipeline-node-detail { font-size: 10.5px; color: var(--ink-muted); min-height: 14px; }
-.pipeline-connector { flex: 0 0 auto; width: 24px; height: 2px; background: var(--border-strong); margin-top: -30px; }
-.pipeline-node.done + .pipeline-connector { background: var(--status-good); }
+
+/* Branching diagram: mirrors the real Orchestrator-Worker + Reflection graph
+   (see app/orchestrator/graph.py) - Discovery fans out to four agents that
+   run concurrently, join back into Optimization, then a Critic/Narrator
+   chain. This replaces a flat 8-in-a-row rail that implied a false single
+   sequence. */
+
+.pipeline-diagram { display: flex; flex-direction: column; align-items: center; padding: 8px 2px 4px 2px; }
+.pipeline-stem { width: 2px; height: 22px; background: var(--border-strong); }
+.pipeline-stem.done { background: var(--status-good); }
+
+.pipeline-fanout-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+
+.pipeline-fanout { position: relative; width: 100%; max-width: 620px; }
+.pipeline-fanout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12.5%;
+  right: 12.5%;
+  height: 2px;
+  background: var(--border-strong);
+}
+.pipeline-fanout.all-done::before { background: var(--status-good); }
+
+.pipeline-fanout-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding-top: 22px;
+}
+@media (max-width: 640px) {
+  .pipeline-fanout-row { grid-template-columns: repeat(2, 1fr); }
+  .pipeline-fanout::before { left: 25%; right: 25%; }
+}
+
+.pipeline-fanout-row .pipeline-node { position: relative; width: auto; }
+.pipeline-fanout-row .pipeline-node::before {
+  content: "";
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  width: 2px;
+  height: 22px;
+  background: var(--border-strong);
+  transform: translateX(-50%);
+}
+.pipeline-fanout-row .pipeline-node.done::before { background: var(--status-good); }
+
+/* Optimization/Critic/Narrator stack as solo nodes (same pattern as
+   Discovery) rather than a side-by-side row. A horizontal row centers as
+   one block, so the incoming convergence stem - itself centered on the
+   diagram - lands in the gap between the first two nodes instead of on
+   Optimization's dot. Stacking removes the misalignment by construction:
+   every node here is centered the same way Discovery is, so every stem
+   between them is guaranteed to land on a dot. Wider than a fan-out column
+   (which is grid-constrained to fit 4 across) so detail text wraps less. */
+.pipeline-solo { width: 220px; }
+
+/* --- scenario cards (Keep/Cancel/Renegotiate) ---
+   The decision-relevant info - what action, what it's worth - is the
+   whole point of this page; it was previously a small badge competing
+   with a paragraph of rationale text for attention. Both now anchor a
+   dedicated header row, with a tone-colored left edge on the card itself
+   so severity reads while scanning down the list without stopping to
+   read every badge. */
+
+.scenario-card { border-left: 4px solid var(--border-strong); }
+.scenario-card[data-tone="critical"] { border-left-color: var(--status-critical); }
+.scenario-card[data-tone="warning"] { border-left-color: var(--status-warning); }
+
+.scenario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.scenario-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  background: var(--surface-3);
+  color: var(--ink-secondary);
+}
+.scenario-action[data-tone="critical"] { background: var(--status-critical-bg); color: var(--status-critical); }
+.scenario-action[data-tone="warning"] { background: var(--status-warning-bg); color: var(--status-warning); }
+
+.scenario-savings { text-align: right; }
+.scenario-savings-value { font-size: 26px; font-weight: 800; color: var(--status-good); }
+.scenario-savings-value span { font-size: 13px; font-weight: 700; color: var(--ink-muted); margin-left: 2px; }
+.scenario-savings-confidence { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+
+.scenario-subline { font-size: 13px; color: var(--ink-secondary); margin-bottom: 10px; }
+.scenario-subline strong { color: var(--ink-primary); font-size: 14.5px; font-weight: 700; }
+
+.scenario-rationale { font-size: 13.5px; color: var(--ink-secondary); margin: 0; line-height: 1.55; }
+.scenario-talking-points { margin: 8px 0 0 18px; padding: 0; font-size: 13px; color: var(--ink-secondary); }
+
+@media (max-width: 560px) {
+  .scenario-savings { text-align: left; }
+}
+
+/* --- category savings bars (Findings) ---
+   A ranked list rather than a bar chart: the underlying data is a long
+   tail (one or two categories dominate annual savings), where a plotted
+   bar chart squashes most categories into invisible slivers. Every value
+   here stays legible as text regardless of how small its bar is. */
+
+.category-bars { display: flex; flex-direction: column; gap: 16px; }
+.category-bar-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 100px;
+  align-items: center;
+  gap: 16px;
+}
+.category-bar-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.category-bar-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.category-bar-count { font-size: 11px; color: var(--ink-muted); }
+.category-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.category-bar-fill {
+  height: 100%;
+  min-width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand), var(--brand-strong));
+}
+.category-bar-value { text-align: right; font-weight: 800; font-size: 14px; }
+@media (max-width: 640px) {
+  .category-bar-row { grid-template-columns: 1fr; gap: 6px; }
+  .category-bar-value { text-align: left; }
+}
 
 /* --- feed / list rows --- */
 
@@ -404,6 +604,9 @@ a.feed-row:hover .feed-title { color: var(--brand); }
 /* --- misc --- */
 
 .section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.03em;
@@ -417,13 +620,21 @@ a.feed-row:hover .feed-title { color: var(--brand); }
 @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr; } }
 
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   text-align: center;
   padding: 48px 20px;
   color: var(--ink-muted);
 }
+.empty-state .icon { opacity: 0.55; }
 
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 999px;
   border: 1px solid var(--border-strong);

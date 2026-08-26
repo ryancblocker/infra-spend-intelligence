@@ -63,16 +63,38 @@ def _client():
     return chromadb.PersistentClient(path=str(config.VECTOR_STORE_DIR))
 
 
+def index_needs_rebuild() -> bool:
+    """True if the persisted collection's embedding dimension doesn't match the
+    currently active embedding backend. Ollama's nomic-embed-text produces
+    768-dim vectors; the offline hashed fallback produces 256-dim vectors
+    (`llm_client.EMBED_DIM`). Chroma pins a collection's dimension at
+    creation, so switching backends (e.g. testing offline, then installing
+    Ollama - or the reverse) without rebuilding raises an opaque
+    InvalidArgumentError deep inside a pipeline run instead of failing fast."""
+    client = _client()
+    try:
+        collection = client.get_collection(COLLECTION_NAME)
+    except Exception:
+        return True  # no collection yet - not a rebuild, just a first build
+
+    stored_dim = (collection.metadata or {}).get("embedding_dim")
+    if stored_dim is None:
+        return True  # built before this check existed
+
+    current_dim = len(embed_texts(["dimension probe"])[0])
+    return stored_dim != current_dim
+
+
 def build_index() -> int:
     """(Re)build the contract-document vector index from app/data/contract_docs/."""
     client = _client()
     existing = {c.name for c in client.list_collections()}
     if COLLECTION_NAME in existing:
         client.delete_collection(COLLECTION_NAME)
-    collection = client.create_collection(COLLECTION_NAME, metadata={"hnsw:space": VECTOR_SPACE})
 
     doc_paths = sorted(config.CONTRACT_DOCS_DIR.glob("*.txt"))
     if not doc_paths:
+        client.create_collection(COLLECTION_NAME, metadata={"hnsw:space": VECTOR_SPACE})
         return 0
 
     ids, documents, metadatas = [], [], []
@@ -88,6 +110,11 @@ def build_index() -> int:
             })
 
     embeddings = embed_texts(documents)
+    embedding_dim = len(embeddings[0]) if embeddings else None
+    collection = client.create_collection(
+        COLLECTION_NAME,
+        metadata={"hnsw:space": VECTOR_SPACE, "embedding_dim": embedding_dim, "embedding_backend": embedding_backend()},
+    )
     collection.add(ids=ids, documents=documents, metadatas=metadatas, embeddings=embeddings)
     return len(doc_paths)
 

@@ -39,6 +39,20 @@ database auto-seeds on first run, and the app works fully offline. See
 agentic experience, and [`docs/architecture.md`](docs/architecture.md) for
 how the pipeline is built.
 
+### Demo mode
+
+A real LLM-backed run can take a very long time end to end (extraction alone
+calls the model once per contract per retrieval iteration, plus up to fifteen
+more calls in optimization). To record a walkthrough of the pipeline without
+waiting on that - or without any LLM configured at all - flip the **Demo
+mode** toggle above the Run Analysis button on the Overview page. It runs the
+same eight-agent pipeline against the same seeded portfolio, using the app's
+existing offline deterministic path (no LLM calls, no network), and paces the
+progress events so the pipeline visualization is still watchable instead of
+finishing instantly. Demo runs are clearly labeled "demo" everywhere the UI
+shows provenance (executive summary badge, run history) so they're never
+mistaken for a real analysis.
+
 ## Project layout
 
 ```

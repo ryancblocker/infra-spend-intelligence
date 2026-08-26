@@ -4,30 +4,41 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}PACT{% endblock %} · Mission Control</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/css/theme.css">
   <script src="/static/vendor/alpine.min.js" defer></script>
   <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
 <body>
+  {% from "_icons.html" import icon %}
   <div class="shell">
-    <nav class="sidenav">
+    <nav class="sidenav" x-data>
       <div class="brand">
-        <div class="brand-mark"></div>
+        <div class="brand-mark">{{ icon("nodes", 17) }}</div>
         <div>
           <div class="brand-title">PACT</div>
           <div class="brand-subtitle">Mission Control</div>
         </div>
       </div>
 
-      <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">Overview</a>
-      <a class="nav-link {% if request.url.path.startswith('/contracts') %}active{% endif %}" href="/contracts">Contracts</a>
-      <a class="nav-link {% if request.url.path == '/findings' %}active{% endif %}" href="/findings">Findings</a>
-      <a class="nav-link {% if request.url.path == '/scenarios' %}active{% endif %}" href="/scenarios">Scenarios</a>
-      <a class="nav-link {% if request.url.path == '/ask' %}active{% endif %}" href="/ask">Ask PACT</a>
-      <a class="nav-link {% if request.url.path.startswith('/runs') %}active{% endif %}" href="/runs">Run History</a>
+      <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">{{ icon("gauge", 16) }} Overview</a>
+      <a class="nav-link {% if request.url.path.startswith('/contracts') %}active{% endif %}" href="/contracts">{{ icon("file-text", 16) }} Contracts</a>
+      <a class="nav-link {% if request.url.path == '/findings' %}active{% endif %}" href="/findings">{{ icon("flag", 16) }} Findings</a>
+      <a class="nav-link {% if request.url.path == '/scenarios' %}active{% endif %}" href="/scenarios">{{ icon("decision", 16) }} Scenarios</a>
+      <a class="nav-link {% if request.url.path == '/ask' %}active{% endif %}" href="/ask">{{ icon("message", 16) }} Ask PACT</a>
+      <a class="nav-link {% if request.url.path.startswith('/runs') %}active{% endif %}" href="/runs">{{ icon("history", 16) }} Run History</a>
 
       <div class="nav-footer">
-        <button class="theme-toggle" onclick="pactToggleTheme()">Toggle theme</button>
+        <div class="nav-footer-row">
+          <button class="theme-toggle" onclick="pactToggleTheme()">Toggle theme</button>
+          <label class="switch-row" title="Demo mode replays the pipeline against the seeded portfolio with the offline agents only - no LLM calls, done in seconds.">
+            <span class="switch">
+              <input type="checkbox" x-model="$store.pact.demoMode" @change="$store.pact.persistDemoMode()">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+            Demo
+          </label>
+        </div>
         <div class="mode-pill {% if llm_mode == 'offline' %}offline{% endif %}">
           <span class="mode-dot"></span> {{ llm_mode }} mode
         </div>
