@@ -40,6 +40,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// --- Global stores ---
+// Demo mode lives in a store (not a page-local Alpine component) because
+// its toggle sits in the sidenav footer - present on every page - while
+// only Mission Control's pipelineRunner() actually consumes it.
+
+document.addEventListener("alpine:init", () => {
+  let storedDemoMode = false;
+  try { storedDemoMode = localStorage.getItem("pact-demo-mode") === "1"; } catch (e) { /* ignore */ }
+
+  Alpine.store("pact", {
+    demoMode: storedDemoMode,
+    persistDemoMode() {
+      try { localStorage.setItem("pact-demo-mode", this.demoMode ? "1" : "0"); } catch (e) { /* ignore */ }
+    },
+  });
+});
+
 // --- Pipeline run (Mission Control) ---
 
 function pipelineRunner(completedDetails) {
@@ -103,7 +120,7 @@ function pipelineRunner(completedDetails) {
         window.history.replaceState({}, "", window.location.pathname);
       }
 
-      const source = new EventSource("/api/run");
+      const source = new EventSource(this.$store.pact.demoMode ? "/api/run?demo=true" : "/api/run");
       this._source = source;
 
       source.onmessage = (evt) => {

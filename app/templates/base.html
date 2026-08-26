@@ -12,7 +12,7 @@
 <body>
   {% from "_icons.html" import icon %}
   <div class="shell">
-    <nav class="sidenav">
+    <nav class="sidenav" x-data>
       <div class="brand">
         <div class="brand-mark">{{ icon("nodes", 17) }}</div>
         <div>
@@ -32,6 +32,13 @@
       <div class="nav-footer">
         <div class="nav-footer-row">
           <button class="theme-toggle" onclick="pactToggleTheme()">Toggle theme</button>
+          <label class="switch-row" title="The next run forces every agent onto the offline deterministic path, regardless of Ollama/Anthropic configuration - fast and reproducible for a demo, no LLM calls.">
+            <span class="switch">
+              <input type="checkbox" x-model="$store.pact.demoMode" @change="$store.pact.persistDemoMode()">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </span>
+            Demo
+          </label>
         </div>
         <div class="mode-pill {% if llm_mode == 'offline' %}offline{% endif %}">
           <span class="mode-dot"></span> {{ llm_mode }} mode
