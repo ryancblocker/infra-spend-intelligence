@@ -93,10 +93,19 @@ def on_startup() -> None:
     if not config.DB_PATH.exists():
         print("[PACT] No database found - seeding from app/data/seed/ on first run...")
         seed_db.build_database()
-        try:
+
+    # Not folded into the block above: the embedding backend can change between
+    # boots (e.g. Ollama gets installed after PACT's first run), and Chroma pins
+    # a collection's embedding dimension at creation - switching backends without
+    # rebuilding raises an opaque error deep inside a pipeline run instead of
+    # failing fast here.
+    try:
+        if vector_store.index_needs_rebuild():
+            print("[PACT] Vector index missing or built with a different embedding "
+                  "backend - rebuilding...")
             vector_store.build_index()
-        except Exception as exc:
-            print(f"[PACT] Vector index build skipped: {exc}")
+    except Exception as exc:
+        print(f"[PACT] Vector index build skipped: {exc}")
 
     # The contracts table is derived from the upload manifest, so reconcile the
     # two on every boot, not only when the database is rebuilt. Without this an

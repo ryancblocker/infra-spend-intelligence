@@ -72,6 +72,21 @@ function pipelineRunner(completedDetails) {
     _source: null,
     complete: false,
 
+    // The pipeline diagram (Mission Control) renders each agent as its own
+    // hardcoded node - so it can give each one a distinct icon - rather than
+    // Alpine's x-for over `nodes`. These read the same reactive array by id.
+    statusOf(id) {
+      const n = this.nodes.find((x) => x.id === id);
+      return n ? n.status : "pending";
+    },
+    detailOf(id) {
+      const n = this.nodes.find((x) => x.id === id);
+      return n ? n.detail : "";
+    },
+    allDone(ids) {
+      return ids.every((id) => this.statusOf(id) === "done");
+    },
+
     start() {
       if (this.running || this._started) return;
       this._started = true;

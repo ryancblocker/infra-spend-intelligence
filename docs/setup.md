@@ -83,7 +83,21 @@ uvicorn app.main:app --reload --port 8420
 Open http://localhost:8420. Click **Run Analysis** on the Overview page to
 execute the agent pipeline - progress streams live via Server-Sent Events.
 
-## 5. Tests
+## 5. Demo mode (recording a walkthrough)
+
+Flip the **Demo mode** toggle above the Run Analysis button on the Overview
+page before clicking it. This runs the real eight-agent pipeline against the
+seeded portfolio through the app's existing offline deterministic path - no
+Ollama, no Anthropic, no network calls at all, regardless of `PACT_LLM_MODE`
+- and paces the progress events (~0.5-1.3s per node) so the pipeline
+visualization is watchable instead of finishing before a recording can even
+start. It's the fastest way to see (or capture) the full pipeline working,
+and the only way that doesn't depend on a real run finishing first.
+
+Demo runs are labeled "demo" in the executive summary badge and run history
+so they're never mistaken for a real analysis.
+
+## 6. Tests
 
 ```bash
 pytest tests/

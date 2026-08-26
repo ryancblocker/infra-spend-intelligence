@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon, category_icon %}
 {% block title %}Contracts{% endblock %}
 {% block content %}
 
@@ -32,7 +33,7 @@
       <tr data-search="{{ c.contract_id }} {{ c.vendor }} {{ c.service_type }}">
         <td><a class="row-link" href="/contracts/{{ c.contract_id }}">{{ c.contract_id }}</a></td>
         <td>{{ c.vendor }}</td>
-        <td>{{ c.service_type }}</td>
+        <td style="display:flex; align-items:center; gap:7px;">{{ category_icon(c.service_type) }}{{ c.service_type }}</td>
         <td class="figures">{{ c.annual_cost | money }}</td>
         <td>
           <span class="badge badge-{{ 'critical' if c.renewal_risk == 'HIGH' else ('warning' if c.renewal_risk == 'MEDIUM' else 'good') }}">

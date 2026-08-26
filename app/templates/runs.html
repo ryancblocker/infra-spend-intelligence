@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Run History{% endblock %}
 {% block content %}
 
@@ -37,7 +38,7 @@
   </table>
 </div>
 {% else %}
-<div class="empty-state">No runs yet. Run the pipeline from the Overview page to start building history.</div>
+<div class="empty-state">{{ icon("inbox", 26) }}<div>No runs yet. Run the pipeline from the Overview page to start building history.</div></div>
 {% endif %}
 
 {% endblock %}

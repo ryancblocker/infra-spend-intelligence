@@ -1,13 +1,14 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon, category_icon, action_icon %}
 {% block title %}{{ contract.contract_id }}{% endblock %}
 {% block content %}
 
 <div class="page-header">
   <div>
-    <h1 class="page-title">{{ contract.vendor }}</h1>
+    <h1 class="page-title">{{ category_icon(contract.service_type, 22) }} {{ contract.vendor }}</h1>
     <p class="page-subtitle">{{ contract.contract_id }} · {{ contract.service_type }} · {{ contract.region }}</p>
   </div>
-  <a class="btn" href="/contracts">← All contracts</a>
+  <a class="btn" href="/contracts">{{ icon("arrow-left", 15) }} All contracts</a>
 </div>
 
 <div class="kpi-grid">
@@ -34,7 +35,7 @@
 
 <div class="grid-2" style="margin-bottom:24px;">
   <div class="card">
-    <div class="section-title">Extracted Clauses {% if extracted %}<span class="badge badge-neutral" style="text-transform:none;">{{ extracted.extraction_source }}</span>{% endif %}</div>
+    <div class="section-title">{{ icon("file-text", 15) }} Extracted Clauses {% if extracted %}<span class="badge badge-neutral" style="text-transform:none;">{{ extracted.extraction_source }}</span>{% endif %}</div>
     {% if extracted %}
       <p><strong>Risk level:</strong>
         <span class="badge badge-{{ 'critical' if extracted.risk_level == 'High' else ('warning' if extracted.risk_level == 'Medium' else 'good') }}">{{ extracted.risk_level }}</span>
@@ -76,13 +77,13 @@
       {{ cited('liability_cap_summary', 'Liability cap', extracted.liability_cap_summary) }}
 
       <div class="chip-row">
-        {% if extracted.has_mfn_clause %}<span class="chip active">Most-favored pricing</span>{% endif %}
-        {% if extracted.has_price_protection_clause %}<span class="chip active">Price protection</span>{% endif %}
-        {% if extracted.minimum_commitment %}<span class="chip active">{{ extracted.minimum_commitment }}</span>{% endif %}
+        {% if extracted.has_mfn_clause %}<span class="chip active">{{ icon("shield-check", 13) }} Most-favored pricing</span>{% endif %}
+        {% if extracted.has_price_protection_clause %}<span class="chip active">{{ icon("shield-check", 13) }} Price protection</span>{% endif %}
+        {% if extracted.minimum_commitment %}<span class="chip active">{{ icon("key", 13) }} {{ extracted.minimum_commitment }}</span>{% endif %}
       </div>
 
       <details class="agent-trace">
-        <summary>Agent trace &mdash; {{ extracted.extraction_iterations }} investigation
+        <summary>{{ icon("search", 13) }} Agent trace &mdash; {{ extracted.extraction_iterations }} investigation
           {{ 'pass' if extracted.extraction_iterations == 1 else 'passes' }},
           {{ extracted.field_sources | length }} cited {{ 'field' if extracted.field_sources | length == 1 else 'fields' }}</summary>
         <div class="trace-body">
@@ -106,33 +107,33 @@
       </details>
     {% else %}
       {% if not has_run %}
-        <div class="empty-state">The pipeline hasn't run yet &mdash; click "Run Analysis" from the Overview page.</div>
+        <div class="empty-state">{{ icon("inbox", 24) }}<div>The pipeline hasn't run yet &mdash; click "Run Analysis" from the Overview page.</div></div>
       {% else %}
-        <div class="empty-state">No source document on file for this contract &mdash; extraction only runs on contracts with prose to read.</div>
+        <div class="empty-state">{{ icon("inbox", 24) }}<div>No source document on file for this contract &mdash; extraction only runs on contracts with prose to read.</div></div>
       {% endif %}
     {% endif %}
   </div>
 
   <div class="card">
-    <div class="section-title">Source Document</div>
+    <div class="section-title">{{ icon("file-text", 15) }} Source Document</div>
     {% if source_text %}
       <pre style="white-space:pre-wrap; font-size:12.5px; line-height:1.6; color:var(--ink-secondary); max-height:420px; overflow-y:auto; margin:0;">{{ source_text }}</pre>
     {% else %}
-      <div class="empty-state">No source document on file for this contract.</div>
+      <div class="empty-state">{{ icon("inbox", 24) }}<div>No source document on file for this contract.</div></div>
     {% endif %}
   </div>
 </div>
 
 {% if findings or scenarios or is_upload %}
 <div class="card" style="margin-bottom:24px;">
-  <div class="section-title">Related Findings &amp; Recommendations</div>
+  <div class="section-title">{{ icon("flag", 15) }} Related Findings &amp; Recommendations</div>
   {% if is_upload %}
-  <div class="empty-state">Utilization findings require your usage data, which this contract does not contain.</div>
+  <div class="empty-state">{{ icon("inbox", 24) }}<div>Utilization findings require your usage data, which this contract does not contain.</div></div>
   {% else %}
   {% for s in scenarios %}
   <div class="feed-row">
     <div>
-      <div class="feed-title">{{ s.recommended_action }} · {{ s.asset_id }}
+      <div class="feed-title">{{ action_icon(s.recommended_action, 13) }} {{ s.recommended_action }} · {{ s.asset_id }}
         <span class="badge badge-{{ 'good' if s.source.split('-')[0] in ('ollama', 'anthropic') else 'neutral' }}"
               style="text-transform:none; font-size:10px; padding:1px 6px;" title="How this recommendation was judged">{{ s.source }}</span>
       </div>
@@ -148,12 +149,12 @@
 </div>
 {% endif %}
 
-<div class="section-title">Portfolio Assets Under This Contract</div>
+<div class="section-title">{{ icon("layers", 15) }} Portfolio Assets Under This Contract</div>
 <div class="grid-3">
-  {% for label, rows in [("Circuits", assets.circuits), ("Colocation", assets.colo), ("Licenses", assets.licenses), ("Mobile Lines", assets.mobile_lines)] %}
+  {% for label, icon_name, rows in [("Circuits", "antenna", assets.circuits), ("Colocation", "server", assets.colo), ("Licenses", "key", assets.licenses), ("Mobile Lines", "smartphone", assets.mobile_lines)] %}
     {% if rows %}
     <div class="card">
-      <div class="section-title">{{ label }} ({{ rows | length }})</div>
+      <div class="section-title">{{ icon(icon_name, 15) }} {{ label }} ({{ rows | length }})</div>
       {% for row in rows[:6] %}
         <div class="feed-row">
           <div class="feed-title">{{ row.get('circuit_id') or row.get('colo_id') or row.get('license_id') or row.get('line_id') }}</div>

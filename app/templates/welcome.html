@@ -1,6 +1,11 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}How it works{% endblock %}
 {% block content %}
+
+{# Same icon per agent as the live pipeline diagram on Mission Control, so
+   this explainer and the real thing read as the same product. #}
+{% set agent_icons = ["search", "file-text", "trash", "bar-chart", "calendar", "sliders", "shield-check", "sparkles"] %}
 
 <div class="welcome">
 
@@ -83,7 +88,7 @@
     <ol class="welcome-agents">
       {% for name, description in agents %}
       <li class="welcome-agent">
-        <span class="welcome-agent-num">{{ loop.index }}</span>
+        <span class="welcome-agent-num">{{ icon(agent_icons[loop.index0], 16) }}</span>
         <div class="welcome-agent-body">
           <div class="welcome-agent-name">{{ name }}</div>
           <div class="welcome-agent-desc">{{ description }}</div>

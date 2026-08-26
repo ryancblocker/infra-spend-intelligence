@@ -1,37 +1,38 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}Run {{ run_id }}{% endblock %}
 {% block content %}
 
 <div class="page-header">
   <div>
     <h1 class="page-title">Run {{ run_id }}</h1>
-    <p class="page-subtitle"><a class="row-link" href="/runs">&larr; Back to Run History</a></p>
+    <p class="page-subtitle"><a class="row-link" href="/runs">{{ icon("arrow-left", 13) }} Back to Run History</a></p>
   </div>
 </div>
 
 {% if summary %}
 <div class="kpi-grid">
   <div class="kpi-card">
-    <div class="kpi-label">Total Annual Spend</div>
+    <div class="kpi-label">{{ icon("banknote", 14) }} Total Annual Spend</div>
     <div class="kpi-value figures">{{ summary.total_annual_spend | money }}</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">Potential Annual Savings</div>
+    <div class="kpi-label">{{ icon("trend-down", 14) }} Potential Annual Savings</div>
     <div class="kpi-value accent figures">{{ summary.total_potential_annual_savings | money }}</div>
     <div class="kpi-sub">{{ summary.number_of_findings }} findings identified</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">High Renewal Risk</div>
+    <div class="kpi-label">{{ icon("alert-triangle", 14) }} High Renewal Risk</div>
     <div class="kpi-value figures">{{ summary.high_risk_contracts }}</div>
   </div>
 </div>
 
 <div class="card" style="margin-bottom:24px;">
-  <div class="section-title">Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
+  <div class="section-title">{{ icon("sparkles", 15) }} Executive Summary <span class="badge badge-{{ 'good' if summary.llm_mode in ('ollama', 'anthropic') else 'critical' }}" style="text-transform:none;">{{ summary.llm_mode }}</span></div>
   <p style="font-size:15px; line-height:1.6; margin:0;">{{ summary.executive_summary }}</p>
   {% if critic_flags %}
   <div style="margin-top:14px;">
-    <div class="section-title">Critic Flags</div>
+    <div class="section-title">{{ icon("shield-check", 15) }} Critic Flags</div>
     {% for f in critic_flags[:5] %}
     <div class="flag-row">
       <span class="badge badge-{{ 'critical' if f.severity == 'error' else ('warning' if f.severity == 'warning' else 'neutral') }}">{{ f.severity }}</span>
@@ -44,7 +45,7 @@
 
 <div class="grid-2">
   <div class="card">
-    <div class="section-title">Top Savings Opportunities</div>
+    <div class="section-title">{{ icon("trend-down", 15) }} Top Savings Opportunities</div>
     {% if top_scenarios %}
       {% for s in top_scenarios %}
       <div class="feed-row">
@@ -56,12 +57,12 @@
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty-state">No scenarios in this run.</div>
+      <div class="empty-state">{{ icon("inbox", 24) }}<div>No scenarios in this run.</div></div>
     {% endif %}
   </div>
 
   <div class="card">
-    <div class="section-title">Renewal Risk</div>
+    <div class="section-title">{{ icon("calendar", 15) }} Renewal Risk</div>
     {% if renewal_risks %}
       {% for r in renewal_risks %}
       <div class="feed-row">
@@ -75,13 +76,13 @@
       </div>
       {% endfor %}
     {% else %}
-      <div class="empty-state">No renewal risk data in this run.</div>
+      <div class="empty-state">{{ icon("inbox", 24) }}<div>No renewal risk data in this run.</div></div>
     {% endif %}
   </div>
 </div>
 
 {% else %}
-<div class="empty-state">This run has no summary data.</div>
+<div class="empty-state">{{ icon("inbox", 26) }}<div>This run has no summary data.</div></div>
 {% endif %}
 
 {% endblock %}
