@@ -26,6 +26,7 @@ from starlette.requests import Request  # noqa: E402
 from app import config, views  # noqa: E402
 from app.data import seed_db  # noqa: E402
 from app.orchestrator import persistence  # noqa: E402
+from app.orchestrator.demo import run_demo_pipeline  # noqa: E402
 from app.orchestrator.events import DONE_SENTINEL, emit, emit_done, new_queue  # noqa: E402
 from app.orchestrator.graph import detail_for, run_pipeline  # noqa: E402
 from app.orchestrator.state import PipelineState  # noqa: E402
@@ -548,7 +549,7 @@ def api_runs():
     return {"runs": persistence.list_runs()}
 
 
-async def _execute_pipeline(q: "queue_module.Queue") -> None:
+async def _execute_pipeline(q: "queue_module.Queue", demo: bool = False) -> None:
     """Owns the pipeline's actual lifecycle - runs independently of whichever
     client's SSE connection happens to be watching it. A dropped connection
     (client timeout, closed tab) must not orphan a run mid-flight: real
@@ -565,9 +566,10 @@ async def _execute_pipeline(q: "queue_module.Queue") -> None:
     left held.
     """
     global _LAST_RUN
+    pipeline_fn = run_demo_pipeline if demo else run_pipeline
     try:
         final_state = await asyncio.wait_for(
-            asyncio.to_thread(run_pipeline, q), timeout=config.PIPELINE_TIMEOUT_SECONDS
+            asyncio.to_thread(pipeline_fn, q), timeout=config.PIPELINE_TIMEOUT_SECONDS
         )
         _LAST_RUN = final_state
         _record_node_details(final_state)
@@ -588,12 +590,12 @@ async def _execute_pipeline(q: "queue_module.Queue") -> None:
 
 
 @app.get("/api/run")
-async def api_run():
+async def api_run(demo: bool = False):
     if not _RUN_LOCK.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="A pipeline run is already in progress")
 
     q = new_queue()
-    asyncio.create_task(_execute_pipeline(q))
+    asyncio.create_task(_execute_pipeline(q, demo))
 
     async def event_stream():
         ok = True

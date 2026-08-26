@@ -382,15 +382,64 @@ tbody tr:hover { background: var(--surface-2); }
 tbody a.row-link { text-decoration: none; font-weight: 700; color: var(--ink-primary); }
 tbody a.row-link:hover { color: var(--brand); }
 
-/* --- pipeline visualization --- */
+/* --- pipeline visualization ---
+   A flat row of steps, left to right - no branch lines, no coordinate math
+   to keep in sync with anything. Discovery, then the four agents it fans
+   out to (grouped in one shared box so "these run together" is shown by
+   containment, not by drawing a line to each one), then Optimization,
+   Critic, Narrator. Every arrow is a static character between flex items,
+   not a positioned line - there is nothing here that can misalign. */
 
-.pipeline-node {
+/* Icons must stay level regardless of how long each step's detail text
+   turns out to be - detail is the LAST thing in each step, so as long as
+   every step (and the parallel group, and each arrow) is top-aligned
+   within the row, nothing that renders below the icon can ever move it.
+   The one thing that must be constructed carefully: the parallel group
+   has its own "N in parallel" caption that a plain step doesn't, which
+   would otherwise push its icons down relative to a plain step's. Every
+   item here reserves an identical label-slot - real text in the group,
+   empty everywhere else, same fixed height in both cases - so every
+   icon starts from the same offset by construction, not by matching
+   guessed pixel values. */
+
+.pipeline-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  row-gap: 22px;
+  padding: 4px 2px;
+}
+
+.pipeline-step-label-slot {
+  height: 18px;
+  line-height: 18px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  text-align: center;
+}
+
+.pipeline-arrow {
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  width: 108px;
+  color: var(--border-strong);
+}
+.pipeline-arrow-icon { height: 40px; display: flex; align-items: center; justify-content: center; }
+
+.pipeline-step {
+  flex: 0 0 auto;
+  width: 106px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   text-align: center;
 }
 .pipeline-node-dot {
@@ -407,17 +456,17 @@ tbody a.row-link:hover { color: var(--brand); }
   font-size: 13px;
   transition: all 0.25s ease;
 }
-.pipeline-node.done .pipeline-node-dot {
+.pipeline-step.done .pipeline-node-dot {
   background: var(--status-good-bg);
   border-color: var(--status-good);
   color: var(--status-good);
 }
-.pipeline-node.running .pipeline-node-dot {
+.pipeline-step.running .pipeline-node-dot {
   border-color: var(--brand);
   color: var(--brand);
   animation: pulse 1.1s ease-in-out infinite;
 }
-.pipeline-node.error .pipeline-node-dot {
+.pipeline-step.error .pipeline-node-dot {
   background: var(--status-critical-bg);
   border-color: var(--status-critical);
   color: var(--status-critical);
@@ -427,76 +476,43 @@ tbody a.row-link:hover { color: var(--brand); }
   50% { box-shadow: 0 0 0 8px rgba(255, 138, 30, 0); }
 }
 .pipeline-node-label { font-size: 11.5px; font-weight: 700; color: var(--ink-secondary); }
-.pipeline-node.done .pipeline-node-label,
-.pipeline-node.running .pipeline-node-label,
-.pipeline-node.error .pipeline-node-label { color: var(--ink-primary); }
-.pipeline-node.error .pipeline-node-detail { color: var(--status-critical); }
+.pipeline-step.done .pipeline-node-label,
+.pipeline-step.running .pipeline-node-label,
+.pipeline-step.error .pipeline-node-label { color: var(--ink-primary); }
+.pipeline-step.error .pipeline-node-detail { color: var(--status-critical); }
 .pipeline-node-detail { font-size: 10.5px; color: var(--ink-muted); min-height: 14px; }
 
-/* Branching diagram: mirrors the real Orchestrator-Worker + Reflection graph
-   (see app/orchestrator/graph.py) - Discovery fans out to four agents that
-   run concurrently, join back into Optimization, then a Critic/Narrator
-   chain. This replaces a flat 8-in-a-row rail that implied a false single
-   sequence. */
-
-.pipeline-diagram { display: flex; flex-direction: column; align-items: center; padding: 8px 2px 4px 2px; }
-.pipeline-stem { width: 2px; height: 22px; background: var(--border-strong); }
-.pipeline-stem.done { background: var(--status-good); }
-
-.pipeline-fanout-label {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-  margin-bottom: 10px;
+/* The one relationship still worth showing: these four run together. A
+   background panel says that by containing them, not by drawing a line to
+   each one - it can never point at the wrong thing because it isn't
+   pointing at anything, it's just holding them. */
+.pipeline-parallel-group {
+  flex: 0 1 auto;
+  min-width: 0; /* flex items default to min-width:auto (their content's
+                   natural width), which blocks shrinking entirely - this
+                   group must be able to shrink so its own items can wrap
+                   to 2x2 instead of pushing the page wider than the
+                   viewport. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  /* No top padding: the label-slot must start at this box's own top edge,
+     same as a plain step's label-slot starts at the row's top edge -
+     otherwise this box's icons would sit lower than a plain step's for a
+     reason having nothing to do with either one's detail text. */
+  padding: 0 16px 14px;
+  border-radius: 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
 }
-
-.pipeline-fanout { position: relative; width: 100%; max-width: 620px; }
-.pipeline-fanout::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 12.5%;
-  right: 12.5%;
-  height: 2px;
-  background: var(--border-strong);
+.pipeline-parallel-group-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  justify-content: center;
 }
-.pipeline-fanout.all-done::before { background: var(--status-good); }
-
-.pipeline-fanout-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  padding-top: 22px;
-}
-@media (max-width: 640px) {
-  .pipeline-fanout-row { grid-template-columns: repeat(2, 1fr); }
-  .pipeline-fanout::before { left: 25%; right: 25%; }
-}
-
-.pipeline-fanout-row .pipeline-node { position: relative; width: auto; }
-.pipeline-fanout-row .pipeline-node::before {
-  content: "";
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  width: 2px;
-  height: 22px;
-  background: var(--border-strong);
-  transform: translateX(-50%);
-}
-.pipeline-fanout-row .pipeline-node.done::before { background: var(--status-good); }
-
-/* Optimization/Critic/Narrator stack as solo nodes (same pattern as
-   Discovery) rather than a side-by-side row. A horizontal row centers as
-   one block, so the incoming convergence stem - itself centered on the
-   diagram - lands in the gap between the first two nodes instead of on
-   Optimization's dot. Stacking removes the misalignment by construction:
-   every node here is centered the same way Discovery is, so every stem
-   between them is guaranteed to land on a dot. Wider than a fan-out column
-   (which is grid-constrained to fit 4 across) so detail text wraps less. */
-.pipeline-solo { width: 220px; }
 
 /* --- scenario cards (Keep/Cancel/Renegotiate) ---
    The decision-relevant info - what action, what it's worth - is the

@@ -99,56 +99,84 @@
     </button>
   </div>
 
-  <div class="pipeline-diagram">
-    <div class="pipeline-node pipeline-solo" :class="statusOf('discovery')">
+  <p class="page-subtitle" style="margin:0 0 10px 0; font-size:12px;" x-show="$store.pact.demoMode" x-cloak>
+    Demo mode is on (toggle it in the sidebar) - the next run forces the offline deterministic path, no LLM calls, done in seconds. Good for a walkthrough.
+  </p>
+
+  {# Every step (and each arrow) starts with a label-slot of the same fixed
+     height - empty here, real text on the parallel group below - so every
+     icon starts from an identical offset no matter what text, if any,
+     renders above or below it. See the CSS comment on .pipeline-steps. #}
+  <div class="pipeline-steps">
+    <div class="pipeline-step" :class="statusOf('discovery')">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
       <div class="pipeline-node-dot">{{ icon("search", 20) }}</div>
       <div class="pipeline-node-label">Discovery</div>
       <div class="pipeline-node-detail" x-text="detailOf('discovery')"></div>
     </div>
-    <div class="pipeline-stem" :class="statusOf('discovery') === 'done' ? 'done' : ''"></div>
 
-    <div class="pipeline-fanout-label">4 agents run in parallel</div>
-    <div class="pipeline-fanout" :class="allDone(['extraction','waste','benchmark','renewal']) ? 'all-done' : ''">
-      <div class="pipeline-fanout-row">
-        <div class="pipeline-node" :class="statusOf('extraction')">
+    <div class="pipeline-arrow">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
+      <div class="pipeline-arrow-icon">{{ icon("chevron-right", 16) }}</div>
+    </div>
+
+    <div class="pipeline-parallel-group">
+      <div class="pipeline-step-label-slot">4 in parallel</div>
+      <div class="pipeline-parallel-group-items">
+        <div class="pipeline-step" :class="statusOf('extraction')">
           <div class="pipeline-node-dot">{{ icon("file-text", 20) }}</div>
           <div class="pipeline-node-label">Extraction</div>
           <div class="pipeline-node-detail" x-text="detailOf('extraction')"></div>
         </div>
-        <div class="pipeline-node" :class="statusOf('waste')">
+        <div class="pipeline-step" :class="statusOf('waste')">
           <div class="pipeline-node-dot">{{ icon("trash", 20) }}</div>
           <div class="pipeline-node-label">Waste</div>
           <div class="pipeline-node-detail" x-text="detailOf('waste')"></div>
         </div>
-        <div class="pipeline-node" :class="statusOf('benchmark')">
+        <div class="pipeline-step" :class="statusOf('benchmark')">
           <div class="pipeline-node-dot">{{ icon("bar-chart", 20) }}</div>
           <div class="pipeline-node-label">Benchmark</div>
           <div class="pipeline-node-detail" x-text="detailOf('benchmark')"></div>
         </div>
-        <div class="pipeline-node" :class="statusOf('renewal')">
+        <div class="pipeline-step" :class="statusOf('renewal')">
           <div class="pipeline-node-dot">{{ icon("calendar", 20) }}</div>
           <div class="pipeline-node-label">Renewal</div>
           <div class="pipeline-node-detail" x-text="detailOf('renewal')"></div>
         </div>
       </div>
     </div>
-    <div class="pipeline-stem" :class="allDone(['extraction','waste','benchmark','renewal']) ? 'done' : ''"></div>
 
-    <div class="pipeline-node pipeline-solo" :class="statusOf('optimization')">
+    <div class="pipeline-arrow">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
+      <div class="pipeline-arrow-icon">{{ icon("chevron-right", 16) }}</div>
+    </div>
+
+    <div class="pipeline-step" :class="statusOf('optimization')">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
       <div class="pipeline-node-dot">{{ icon("sliders", 20) }}</div>
       <div class="pipeline-node-label">Optimization</div>
       <div class="pipeline-node-detail" x-text="detailOf('optimization')"></div>
     </div>
-    <div class="pipeline-stem" :class="statusOf('optimization') === 'done' ? 'done' : ''"></div>
 
-    <div class="pipeline-node pipeline-solo" :class="statusOf('critic')">
+    <div class="pipeline-arrow">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
+      <div class="pipeline-arrow-icon">{{ icon("chevron-right", 16) }}</div>
+    </div>
+
+    <div class="pipeline-step" :class="statusOf('critic')">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
       <div class="pipeline-node-dot">{{ icon("shield-check", 20) }}</div>
       <div class="pipeline-node-label">Critic</div>
       <div class="pipeline-node-detail" x-text="detailOf('critic')"></div>
     </div>
-    <div class="pipeline-stem" :class="statusOf('critic') === 'done' ? 'done' : ''"></div>
 
-    <div class="pipeline-node pipeline-solo" :class="statusOf('narrator')">
+    <div class="pipeline-arrow">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
+      <div class="pipeline-arrow-icon">{{ icon("chevron-right", 16) }}</div>
+    </div>
+
+    <div class="pipeline-step" :class="statusOf('narrator')">
+      <div class="pipeline-step-label-slot" aria-hidden="true"></div>
       <div class="pipeline-node-dot">{{ icon("sparkles", 20) }}</div>
       <div class="pipeline-node-label">Narrator</div>
       <div class="pipeline-node-detail" x-text="detailOf('narrator')"></div>
