@@ -6,12 +6,21 @@
     </linearGradient>
   </defs>
   <rect x="0" y="0" width="24" height="24" rx="6" fill="url(#g)"/>
-  <g fill="none" stroke="#1a0f00" stroke-width="1.7" stroke-linecap="round">
-    <circle cx="8" cy="8" r="2.1" fill="#1a0f00"/>
-    <circle cx="17" cy="8" r="2.1" fill="#1a0f00"/>
-    <circle cx="12.5" cy="17" r="2.1" fill="#1a0f00"/>
-    <line x1="9.6" y1="9.2" x2="11.2" y2="15.4"/>
-    <line x1="15.4" y1="9.2" x2="13.8" y2="15.4"/>
-    <line x1="10.1" y1="8" x2="14.9" y2="8"/>
+  <!-- A "P" (for PACT) traced entirely in the same node-graph vocabulary as
+       the rest of the icon system - the mark reads as both a monogram and
+       the multi-agent concept, instead of a generic network glyph in a
+       rounded square. -->
+  <g fill="none" stroke="#1a0f00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="7" y1="4" x2="7" y2="20"/>
+    <line x1="7" y1="4" x2="16.5" y2="5.5"/>
+    <line x1="16.5" y1="5.5" x2="14.5" y2="12"/>
+    <line x1="14.5" y1="12" x2="7" y2="12"/>
+  </g>
+  <g fill="#1a0f00" stroke="none">
+    <circle cx="7" cy="4" r="1.9"/>
+    <circle cx="16.5" cy="5.5" r="1.9"/>
+    <circle cx="14.5" cy="12" r="1.9"/>
+    <circle cx="7" cy="12" r="1.9"/>
+    <circle cx="7" cy="20" r="1.9"/>
   </g>
 </svg>

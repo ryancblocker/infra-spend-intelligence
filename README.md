@@ -43,15 +43,18 @@ how the pipeline is built.
 
 A real LLM-backed run can take a very long time end to end (extraction alone
 calls the model once per contract per retrieval iteration, plus up to fifteen
-more calls in optimization). To record a walkthrough of the pipeline without
-waiting on that - or without any LLM configured at all - flip the **Demo
-mode** toggle above the Run Analysis button on the Overview page. It runs the
-same eight-agent pipeline against the same seeded portfolio, using the app's
-existing offline deterministic path (no LLM calls, no network), and paces the
-progress events so the pipeline visualization is still watchable instead of
-finishing instantly. Demo runs are clearly labeled "demo" everywhere the UI
-shows provenance (executive summary badge, run history) so they're never
-mistaken for a real analysis.
+more calls in optimization), and a contract upload's extraction call alone
+runs 60-75s against a live model. To walk through the app without waiting on
+that - or without any LLM configured at all - flip the **Demo** toggle in the
+sidebar, next to the theme toggle. It forces both the pipeline run and any
+contract upload's extraction onto the app's existing offline deterministic
+path (no LLM calls, no network), so both finish in seconds. Runs made this
+way show up as `offline` mode everywhere the UI reports provenance
+(executive summary badge, run history) - the same label a genuinely
+unconfigured install would show, since that's exactly the code path taken.
+[`docs/demo-assets/sample-contract.pdf`](docs/demo-assets/sample-contract.pdf)
+is a synthetic contract for demonstrating the "Analyze Your Own Contract"
+upload without needing a real document on hand.
 
 ## Project layout
 

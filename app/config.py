@@ -10,6 +10,18 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
 
+# Load BASE_DIR/.env (gitignored, holds ANTHROPIC_API_KEY locally) before any
+# os.environ.get() call below runs. A real environment variable set outside
+# the file still wins - load_dotenv() defaults to override=False. Optional:
+# if python-dotenv isn't installed, this is a no-op and plain env vars still
+# work exactly as before.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(BASE_DIR / ".env")
+except ImportError:
+    pass
+
 DATA_DIR = APP_DIR / "data"
 SEED_DIR = DATA_DIR / "seed"
 CONTRACT_DOCS_DIR = DATA_DIR / "contract_docs"
@@ -37,17 +49,23 @@ ALLOWED_UPLOAD_SUFFIXES = (".pdf", ".txt")
 SCANNED_PDF_MIN_CHARS = 200
 
 # --- LLM backend ---
-# "auto" probes Ollama first, then Anthropic, then falls back to the offline
-# deterministic mode so the app always runs, even with nothing installed.
+# Claude is the primary backend: "auto" checks ANTHROPIC_API_KEY first, then
+# falls back to Ollama (if installed) for local/offline use, then to the
+# offline deterministic mode so the app always runs even with nothing
+# configured at all. Set PACT_LLM_MODE to force one explicitly.
 LLM_MODE = os.environ.get("PACT_LLM_MODE", "auto").strip().lower()
 
+# The local qwen3 chat model this app used before switching to Claude has
+# been removed from this machine - Ollama is kept only for
+# OLLAMA_EMBED_MODEL (retrieval embeddings) and as an optional local chat
+# fallback for anyone who reinstalls a model here. Not required for normal
+# use now that ANTHROPIC_API_KEY is set.
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-# qwen3:1.7b, not a larger sibling: this runs on an 8 GB unified-memory Mac,
-# where qwen3:8b (~5.2 GB resident) leaves too little for the OS and hangs the
-# machine outright. Size up only on a box with real memory headroom.
 OLLAMA_CHAT_MODEL = os.environ.get("PACT_OLLAMA_MODEL", "qwen3:1.7b")
 OLLAMA_EMBED_MODEL = os.environ.get("PACT_OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
+# Set in a local .env file (see .env.example) - never committed. python-dotenv
+# loads it below, before this line reads the environment.
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.environ.get("PACT_ANTHROPIC_MODEL", "claude-sonnet-5")
 

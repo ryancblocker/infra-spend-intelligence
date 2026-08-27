@@ -110,14 +110,24 @@ def wrap_untrusted(text: str) -> str:
 
 @lru_cache(maxsize=1)
 def get_mode() -> str:
-    """Resolve the active backend once per process: ollama | anthropic | offline."""
+    """Resolve the active backend once per process: ollama | anthropic | offline.
+
+    Anthropic is checked before Ollama in "auto" mode - Claude is the primary
+    backend now, not a fallback. This also matters mechanically:
+    _probe_ollama() only confirms the Ollama *service* answers, not that the
+    specific chat model configured in OLLAMA_CHAT_MODEL is actually pulled -
+    if that model were ever removed while Ollama itself stayed running,
+    checking Ollama first would still misreport "ollama" as available and
+    then fail on the first real chat call. Checking Anthropic first avoids
+    depending on that distinction at all.
+    """
     if config.LLM_MODE in ("ollama", "anthropic", "offline"):
         return config.LLM_MODE
 
-    if _probe_ollama():
-        return "ollama"
     if config.ANTHROPIC_API_KEY:
         return "anthropic"
+    if _probe_ollama():
+        return "ollama"
     return "offline"
 
 

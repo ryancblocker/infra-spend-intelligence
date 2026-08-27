@@ -9,3 +9,6 @@ runtime/
 .superpowers/
 
 .DS_Store
+
+# Local secrets (ANTHROPIC_API_KEY etc.) - see .env.example for the template.
+.env

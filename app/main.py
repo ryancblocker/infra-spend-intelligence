@@ -1,7 +1,7 @@
 """
 Purpose: FastAPI application - page routes (server-rendered Jinja2), the SSE
 pipeline-run endpoint, and the /api/ask RAG endpoint. No Node/build step: the
-frontend is templates + vanilla CSS/JS + vendored Alpine.js/Chart.js.
+frontend is templates + vanilla CSS/JS + vendored Alpine.js.
 """
 
 from __future__ import annotations
@@ -11,16 +11,18 @@ import json
 import queue as queue_module
 import sys
 import threading
+from contextlib import nullcontext
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI, File, HTTPException, UploadFile  # noqa: E402
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile  # noqa: E402
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from fastapi.templating import Jinja2Templates  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 from starlette.concurrency import run_in_threadpool  # noqa: E402
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
 from starlette.requests import Request  # noqa: E402
 
 from app import config, views  # noqa: E402
@@ -163,6 +165,23 @@ def _base_context(request: Request) -> dict:
     }
 
 
+@app.exception_handler(StarletteHTTPException)
+async def styled_http_exception(request: Request, exc: StarletteHTTPException):
+    """FastAPI's default for a raised HTTPException (a 404 from a bad URL, a
+    409 from double-clicking a running action, ...) is a bare, unstyled
+    `{"detail": "..."}` JSON body with none of the app's chrome around it -
+    fine for /api/* (a fetch() caller reads exc.detail directly, e.g. the
+    upload flow's error message), but jarring if it's what a page route
+    shows a person live. Page routes get the same error rendered inside the
+    normal sidenav/layout instead; /api/* keeps the plain JSON its callers
+    expect."""
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    ctx = _base_context(request)
+    ctx.update({"status_code": exc.status_code, "detail": exc.detail})
+    return templates.TemplateResponse(request, "error.html", ctx, status_code=exc.status_code)
+
+
 # ---------------------------------------------------------------------------
 # Pages
 # ---------------------------------------------------------------------------
@@ -279,11 +298,17 @@ def _discard_failed_upload(contract_id: str, *possible_paths: Path) -> None:
 
 
 @app.post("/api/upload")
-async def api_upload(file: UploadFile = File(...)):
+async def api_upload(file: UploadFile = File(...), demo: bool = Form(False)):
     """Accept a contract document, extract its terms, and register it as U-000N.
 
     Extraction runs synchronously: the user should learn immediately whether we
     could read their contract, not discover it during the next pipeline run.
+
+    demo=true forces extraction onto the offline deterministic path (see
+    app/orchestrator/demo.forced_offline_mode) regardless of Ollama/Anthropic
+    configuration - the same guarantee Demo Mode already gives the pipeline
+    run, extended to uploads so dragging in a sample contract during a demo
+    doesn't cost the 60-75s a live model call takes (see docs/demo-runbook.md).
 
     The 10 MB cap is enforced twice: enforce_upload_size_limit (middleware,
     above) rejects an oversized upload via Content-Length before the body is
@@ -291,6 +316,7 @@ async def api_upload(file: UploadFile = File(...)):
     once read - the real guarantee, since Content-Length can be absent or
     wrong."""
     from app.agents import extraction
+    from app.orchestrator.demo import forced_offline_mode
     from app.tools import dataset_tools, uploads
     from app.tools.document_loader import UnsupportedDocument, UnsupportedFileType
     from app.tools.uploads import ManifestError, UploadTooLarge
@@ -369,7 +395,8 @@ async def api_upload(file: UploadFile = File(...)):
         # NOT an exception - extract_one handles that internally and still
         # returns a usable record. Rollback below is only for a genuine
         # exception (e.g. the LLM call itself blowing up).
-        record = await run_in_threadpool(extraction.extract_one, contract_id, text)
+        with forced_offline_mode() if demo else nullcontext():
+            record = await run_in_threadpool(extraction.extract_one, contract_id, text)
         if not uploads.update_entry(contract_id, {"terms": record.model_dump(mode="json")}):
             # The user removed this exact upload while extraction was still
             # running. See _UploadRemovedDuringProcessing's docstring for why

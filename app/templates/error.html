@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}{{ status_code }}{% endblock %}
+{% block content %}
+
+<div class="error-page">
+  <div class="error-icon">{{ icon("alert-triangle", 40) }}</div>
+  <div class="error-code figures">{{ status_code }}</div>
+  <h1 class="error-title">
+    {% if status_code == 404 %}Page not found
+    {% elif status_code == 409 %}Already in progress
+    {% else %}Something went wrong
+    {% endif %}
+  </h1>
+  <p class="error-detail">{{ detail }}</p>
+  <a class="btn btn-primary" href="/">{{ icon("gauge", 15) }} Back to Mission Control</a>
+</div>
+
+{% endblock %}

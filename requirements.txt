@@ -7,6 +7,7 @@ langgraph>=0.2
 chromadb>=0.5
 ollama>=0.4
 anthropic>=0.40
+python-dotenv>=1.0
 python-multipart>=0.0.9
 pytest>=8.3
 pypdf>=5.1
