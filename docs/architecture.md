@@ -114,8 +114,8 @@ returned malformed output.
 ## Frontend
 
 FastAPI + Jinja2 server-rendered pages + vanilla CSS design system + vendored
-Alpine.js and Chart.js (no CDN, no Node/build step - `pip install` is the only
-setup). Pipeline runs stream progress over Server-Sent Events
+Alpine.js (no CDN, no Node/build step - `pip install` is the only setup).
+Pipeline runs stream progress over Server-Sent Events
 (`GET /api/run`), driving a live agent-pipeline visualization on the Overview
 page. `/ask` is a RAG chat interface over the contract corpus.
 

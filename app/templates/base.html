@@ -5,16 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}PACT{% endblock %} · Mission Control</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <!-- Blocking and inline on purpose, before the stylesheet: the <html> tag
+       above is server-rendered with a fixed data-theme="dark" default, so a
+       visitor with light theme saved must have that attribute corrected
+       before the browser's first paint - anything deferred, or placed after
+       the stylesheet link, paints dark first and then visibly flips to
+       light a moment later on every single page load. -->
+  <script>
+    try {
+      var t = localStorage.getItem("pact-theme");
+      if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+    } catch (e) { /* ignore - falls back to the default theme */ }
+  </script>
   <link rel="stylesheet" href="/static/css/theme.css?v={{ asset_version }}">
   <script src="/static/vendor/alpine.min.js" defer></script>
-  <script src="/static/vendor/chart.umd.min.js"></script>
 </head>
 <body>
   {% from "_icons.html" import icon %}
   <div class="shell">
     <nav class="sidenav" x-data>
       <div class="brand">
-        <div class="brand-mark">{{ icon("nodes", 17) }}</div>
+        <div class="brand-mark">{{ icon("brand-p", 24) }}</div>
         <div>
           <div class="brand-title">PACT</div>
           <div class="brand-subtitle">Mission Control</div>

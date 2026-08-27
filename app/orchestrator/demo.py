@@ -38,13 +38,18 @@ _FAN_OUT_NODES = ("extraction", "waste", "benchmark", "renewal")
 
 
 @contextmanager
-def _forced_offline_mode():
+def forced_offline_mode():
     """Force every LLM-backed agent onto its offline deterministic path for
     the duration of the block, then restore the originals unconditionally.
-    Safe under the app's single-run lock (only one pipeline - real or demo -
-    ever runs at a time) and does not touch the real get_mode() cache that
-    concurrent requests such as /api/ask rely on.
-    """
+    Used both for a full demo pipeline run below and, directly, by
+    /api/upload for a demo-mode contract upload - an upload's extraction
+    call (extract_one) checks the same get_mode() reference this patches,
+    so the same "force offline for a walkthrough" guarantee applies there
+    too, without a 60-75s live-model wait. Not safe to nest with a
+    concurrent real (non-demo) pipeline run or upload also touching one of
+    these six modules' get_mode - the app's single-run lock covers the
+    pipeline, and only one upload is processed at a time per request, but
+    the two could still overlap each other; last-to-restore wins."""
     originals = {module: module.get_mode for module in _PATCH_TARGETS}
     try:
         for module in _PATCH_TARGETS:
@@ -95,5 +100,5 @@ def run_demo_pipeline(event_queue: "queue_module.Queue | None" = None) -> Pipeli
     """Same return shape and event contract as run_pipeline() - callers (the
     /api/run route, persistence) don't need to know a run was a demo run."""
     reordered = _ReorderedQueue(event_queue)
-    with _forced_offline_mode():
+    with forced_offline_mode():
         return run_pipeline(reordered)  # type: ignore[arg-type]

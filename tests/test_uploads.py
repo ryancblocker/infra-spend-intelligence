@@ -1553,3 +1553,63 @@ def test_coerce_renewal_date_does_not_guess_at_ambiguous_numeric_forms():
     """03/04/2026 is 3 April or 4 March depending on where it was written. We do
     not know, so we must not pick - it is recorded as unread, not guessed."""
     assert extraction.coerce_renewal_date("03/04/2026") == ""
+
+
+# ---------------------------------------------------------------------------
+# demo=true forces the same offline path Demo Mode already forces for the
+# pipeline (app.orchestrator.demo.forced_offline_mode), so a demo upload
+# never costs the 60-75s a live model call takes - see docs/demo-runbook.md
+# and docs/demo-assets/sample-contract.pdf.
+# ---------------------------------------------------------------------------
+
+def test_demo_upload_forces_offline_even_with_a_model_configured(client, monkeypatch):
+    monkeypatch.setattr("app.agents.extraction.get_mode", lambda: "ollama")
+    monkeypatch.setattr(
+        "app.agents.extraction._extract_agentic",
+        lambda contract_id, text: pytest.fail("agentic path must not run when demo=true"),
+    )
+    response = client.post(
+        "/api/upload",
+        data={"demo": "true"},
+        files={"file": ("deal.txt", _txt(*READABLE_CONTRACT), "text/plain")},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["extraction_source"] == "offline"
+    assert payload["vendor"] == "Acme Corp"  # the offline regex path still reads real terms
+
+
+def test_upload_without_demo_flag_uses_whatever_get_mode_says(client, monkeypatch):
+    """The flip side: omitting demo (the default, same as demo=false) must
+    not force anything - a configured model is actually used."""
+    from app.agents.schemas import ExtractedContract
+
+    monkeypatch.setattr("app.agents.extraction.get_mode", lambda: "ollama")
+    calls = []
+
+    def fake_agentic(contract_id, text):
+        calls.append(contract_id)
+        return ExtractedContract(contract_id=contract_id, vendor="Acme Corp", extraction_source="ollama")
+
+    monkeypatch.setattr("app.agents.extraction._extract_agentic", fake_agentic)
+    response = client.post(
+        "/api/upload", files={"file": ("deal.txt", _txt(*READABLE_CONTRACT), "text/plain")}
+    )
+    assert response.status_code == 200
+    assert response.json()["extraction_source"] == "ollama"
+    assert len(calls) == 1
+
+
+def test_demo_upload_restores_get_mode_after_the_request(client, monkeypatch):
+    """forced_offline_mode() must restore extraction.get_mode to whatever it
+    was before this request, not leave it stuck on the lambda that always
+    returns "offline" - the same guarantee app/orchestrator/demo.py's own
+    tests hold the pipeline run to."""
+    monkeypatch.setattr("app.agents.extraction.get_mode", lambda: "ollama")
+    original = extraction.get_mode
+    client.post(
+        "/api/upload",
+        data={"demo": "true"},
+        files={"file": ("deal.txt", _txt(*READABLE_CONTRACT), "text/plain")},
+    )
+    assert extraction.get_mode is original

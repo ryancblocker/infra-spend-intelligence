@@ -3,6 +3,11 @@
 Written 2026-08-03, for the Thursday presentation. Every number here was
 measured on this machine, not estimated.
 
+> **Update, 2026-08-26:** Demo Mode (the sidenav toggle) now covers contract
+> upload too, not just the pipeline run - see "The one piece of dead air"
+> below. `docs/demo-assets/sample-contract.pdf` is a ready-to-use synthetic
+> contract for showing off the upload path without waiting on a real one.
+
 ## Before you start (10 min ahead)
 
 1. **Free memory.** This is an 8 GB machine and the model holds ~1.9 GB.
@@ -52,13 +57,28 @@ measured on this machine, not estimated.
 | Pipeline run, warm caches | **71s** | What you'll show. Visible agent-by-agent progress. |
 | Pipeline run, cold caches | 4.2 min | Only if caches were cleared. |
 | Pipeline run, Ollama down | **0s** | Deterministic fallback. Still produces all 277 findings. |
-| Contract upload | **60-75s** | Progress bar + elapsed counter. Long silence — see below. |
+| Contract upload | **60-75s** (real model) / **instant** (Demo Mode) | Progress bar + elapsed counter on the real path. See below. |
 | `/ask` question | ~43s | Works, but slow. Ask one question, not three. |
 
 ## The one piece of dead air
 
-An upload takes 60-75 seconds. There is a progress bar and an elapsed
-counter, but it is still a minute of silence in front of an audience.
+An upload takes 60-75 seconds against the real model. There is a progress
+bar and an elapsed counter, but it is still a minute of silence in front of
+an audience.
+
+**As of 2026-08-26, the actual fix: turn on Demo Mode first.** It forces the
+same offline deterministic path onto the upload's extraction that it
+already forces onto the pipeline run - no LLM call, no wait. Toggle it in
+the sidenav, drag in `docs/demo-assets/sample-contract.pdf` (a synthetic
+contract that reads cleanly through every extracted field - vendor,
+renewal date, notice period, termination fee, escalator, SLA, liability
+cap, MFN/price-protection clauses, minimum commitment), then hit "Re-run
+Analysis" so the pipeline's own extracted-clauses view picks it up too.
+Whole loop is a few seconds.
+
+The options below are for when you specifically want the *real* model
+demonstrated on upload (e.g. someone asks "does this actually call the
+LLM?") rather than the fast path:
 
 **Options, in order of preference:**
 1. Upload *before* you present, then show the result and re-run the

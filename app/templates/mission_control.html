@@ -25,7 +25,7 @@
       <div class="kpi-sub">discovered when the pipeline runs</div>
     {% endif %}
   </div>
-  <div class="kpi-card">
+  <div class="kpi-card kpi-card--hero">
     <div class="kpi-label">{{ icon("trend-down", 14) }} Potential Annual Savings</div>
     {% if has_run %}
       <div class="kpi-value accent figures" data-countup="{{ summary.total_potential_annual_savings if summary else 0 }}" data-prefix="$">$0</div>
@@ -98,10 +98,6 @@
       <span x-show="running">Running…</span>
     </button>
   </div>
-
-  <p class="page-subtitle" style="margin:0 0 10px 0; font-size:12px;" x-show="$store.pact.demoMode" x-cloak>
-    Demo mode is on (toggle it in the sidebar) - the next run forces the offline deterministic path, no LLM calls, done in seconds. Good for a walkthrough.
-  </p>
 
   {# Every step (and each arrow) starts with a label-slot of the same fixed
      height - empty here, real text on the parallel group below - so every

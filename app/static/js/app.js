@@ -1,15 +1,18 @@
 // PACT frontend behavior: theme toggle, pipeline run SSE, count-up KPIs, ask-page chat.
+//
+// Restoring the saved theme happens in an inline <script> in base.html's
+// <head>, not here - this file loads at the end of <body>, and a user with
+// light theme saved would see a flash of dark (the server-rendered default)
+// on every single page load if the swap waited that long. See that script's
+// own comment for why it has to be inline and blocking, not just early.
 
 (function () {
-  const root = document.documentElement;
-  const stored = localStorage.getItem("pact-theme");
-  if (stored) root.setAttribute("data-theme", stored);
-
   window.pactToggleTheme = function () {
+    const root = document.documentElement;
     const current = root.getAttribute("data-theme") === "light" ? "light" : "dark";
     const next = current === "light" ? "dark" : "light";
     root.setAttribute("data-theme", next);
-    localStorage.setItem("pact-theme", next);
+    try { localStorage.setItem("pact-theme", next); } catch (e) { /* ignore */ }
   };
 })();
 
@@ -17,6 +20,14 @@ function countUp(el, target, opts) {
   opts = opts || {};
   const prefix = opts.prefix || "";
   const decimals = opts.decimals || 0;
+
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    el.textContent = prefix + target.toLocaleString(undefined, {
+      minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+    });
+    return;
+  }
+
   const duration = 900;
   const start = performance.now();
   function frame(now) {
@@ -424,16 +435,21 @@ window.askChat = askChat;
   }
 
   async function send(file) {
+    // Demo mode (see the sidenav toggle) forces extraction onto the offline
+    // path server-side - see /api/upload's own comment in main.py - so this
+    // finishes near-instantly instead of the usual 60-75s live-model call.
+    const isDemo = !!(window.Alpine && Alpine.store("pact") && Alpine.store("pact").demoMode);
     // The 60-75s figure is measured live against the qwen3:1.7b model this
     // app runs locally, not a guess - see the extraction route's own comment
     // in main.py for the same number.
-    status.textContent =
-      `Reading ${file.name}… this usually takes about a minute (60–75s) ` +
-      "with the local model.";
+    status.textContent = isDemo
+      ? `Reading ${file.name}… demo mode is on, so this skips the local model and finishes in a moment.`
+      : `Reading ${file.name}… this usually takes about a minute (60–75s) with the local model.`;
     status.className = "upload-status";
     const stopProgress = startProgress();
     const body = new FormData();
     body.append("file", file);
+    body.append("demo", isDemo ? "true" : "false");
     try {
       const response = await fetch("/api/upload", { method: "POST", body });
       const payload = await response.json();

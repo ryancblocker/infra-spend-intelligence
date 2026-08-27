@@ -52,7 +52,7 @@
       {% for f in findings %}
       <tr data-search="{{ f.category }} {{ f.asset_id }} {{ f.contract_id }} {{ f.issue }}">
         <td class="figures">{{ f.finding_id }}</td>
-        <td style="display:flex; align-items:center; gap:7px;">{{ category_icon(f.category) }}{{ f.category | replace('_', ' ') }}</td>
+        <td><span class="cell-icon-label"><span class="icon-chip">{{ category_icon(f.category) }}</span>{{ f.category | replace('_', ' ') }}</span></td>
         <td>
           {% if f.contract_id %}<a class="row-link" href="/contracts/{{ f.contract_id }}">{{ f.asset_id }}</a>{% else %}{{ f.asset_id }}{% endif %}
         </td>

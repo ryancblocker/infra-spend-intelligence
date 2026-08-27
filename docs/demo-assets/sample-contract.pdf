@@ -1,0 +1,82 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+2 0 obj
+<< /Length 3083 >>
+stream
+BT /F1 9 Tf 13 TL 40 752 Td
+(SAMPLE CONTRACT - FOR DEMO PURPOSES ONLY. Solstice Analytics is a fictional vendor and every figure below is synthetic; nothing here describes a real company or agreement. Generated to exercise the "Analyze Your Own Contract" upload path end to end \(see docs/demo-runbook.md\).) Tj
+T*
+() Tj
+T*
+(CONTRACT ID: DEMO-001) Tj
+T*
+(VENDOR: Solstice Analytics) Tj
+T*
+(CATEGORY: Software License) Tj
+T*
+() Tj
+T*
+(This Software Subscription Agreement \('Agreement'\) governs Customer's subscription to Vendor's analytics software products on a 500 seat \(consumption true-up quarterly\) basis.) Tj
+T*
+() Tj
+T*
+(1. TERM AND RENEWAL. This Agreement commences on 2026-01-15 and continues through 2027-01-15 \(the 'Term'\), unless earlier terminated as provided herein. This Agreement shall automatically renew for successive one-year terms unless either party provides written notice of non-renewal at least 45 days prior to the end of the then-current Term.) Tj
+T*
+() Tj
+T*
+(2. FEES. Customer shall pay Vendor recurring fees of $18,750.00 per month \($225,000.00 annualized\), subject to an Annual Escalator of 4% applied on each anniversary of the Effective Date. Pricing is based on a minimum commitment covering 500 licensed seats.) Tj
+T*
+() Tj
+T*
+(3. TERMINATION. Either party may terminate this Agreement for uncured material breach upon thirty \(30\) days' written notice. If Customer terminates for convenience prior to the end of the Term, Customer shall pay an early termination fee equal to 15% of the remaining committed charges under the Term.) Tj
+T*
+() Tj
+T*
+(4. Service Level Credits: Vendor shall issue a service credit equal to 5% of the affected month's fees for each full hour of Service unavailability beyond the committed uptime SLA of 99.95%, capped at 25% of monthly fees in any calendar month.) Tj
+T*
+() Tj
+T*
+(5. Limitation of Liability: Except for breaches of confidentiality or indemnification obligations, each party's aggregate liability arising out of this Agreement shall not exceed the fees paid or payable in the twelve \(12\) months preceding the claim.) Tj
+T*
+() Tj
+T*
+(6. Most Favored Pricing: Vendor represents that the pricing herein is no less favorable than pricing offered to similarly situated customers of comparable volume. Should Vendor extend more favorable pricing to a similarly situated customer during the Term, Vendor shall extend equivalent terms to Customer upon written request.) Tj
+T*
+() Tj
+T*
+(7. Price Protection: Vendor agrees that per-seat unit pricing shall not increase by more than the Annual Escalator stated in Section 2 for the duration of the Term, regardless of list price changes.) Tj
+T*
+() Tj
+T*
+(8. Data Processing: The parties' Data Processing Addendum, incorporated by reference, governs the processing of Customer Data, including applicable cross-border transfer mechanisms and breach notification timelines.) Tj
+T*
+() Tj
+T*
+(9. GOVERNING LAW. This Agreement is governed by the laws of the state in which Customer's headquarters is located, without regard to conflict of law principles.) Tj
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 850 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+4 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000077 00000 n 
+0000003212 00000 n 
+0000003338 00000 n 
+0000003395 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+3444
+%%EOF
