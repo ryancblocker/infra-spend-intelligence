@@ -98,6 +98,13 @@
       <span x-show="running">Running…</span>
     </button>
   </div>
+  <p class="feed-meta" style="margin:0 0 8px;">
+    {% if benchmark_refresh and benchmark_refresh.diffs %}
+    Pricing last updated {{ benchmark_refresh.fetched_at[:19].replace("T", " ") }} - if that's newer than your last analysis, re-run to pick it up.
+    {% else %}
+    Pricing is currently static seed data - see Market Pricing below to pull real numbers before analyzing.
+    {% endif %}
+  </p>
 
   {# Every step (and each arrow) starts with a label-slot of the same fixed
      height - empty here, real text on the parallel group below - so every
