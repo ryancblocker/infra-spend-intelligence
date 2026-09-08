@@ -187,15 +187,32 @@
 <div class="card" style="margin-bottom:24px;" x-data="benchmarkRefresher()">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
     <div class="section-title" style="margin:0;">Market Pricing</div>
-    <button class="btn btn-ghost" @click="start()" :disabled="running">
-      <span x-show="!running">Refresh market pricing</span>
-      <span x-show="running">Refreshing…</span>
-    </button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-ghost" @click="resetBaseline()" :disabled="running">Reset to baseline</button>
+      <button class="btn btn-ghost" @click="start()" :disabled="running">
+        <span x-show="!running">Refresh market pricing</span>
+        <span x-show="running">Refreshing…</span>
+      </button>
+    </div>
   </div>
-  {% if benchmark_refresh and benchmark_refresh.rates %}
+  {% set diffs = benchmark_refresh.diffs if benchmark_refresh else None %}
+  {% if diffs %}
   <p class="feed-meta" style="margin:0 0 8px;">
-    Last refreshed {{ benchmark_refresh.fetched_at }} · {{ benchmark_refresh.rates | length }} rate{{ 's' if benchmark_refresh.rates | length != 1 else '' }} from live sources, the rest static.
+    Last refreshed {{ benchmark_refresh.fetched_at }} · {{ diffs | length }} rate{{ 's' if diffs | length != 1 else '' }} pulled from live sources, the rest static.
   </p>
+  <div style="margin-bottom:8px;">
+    {% for cat, d in diffs.items() %}
+    <div class="feed-row">
+      <div class="feed-title">{{ cat }}</div>
+      <div class="feed-value figures">
+        {% if d.old is not none and d.old != d.new %}
+        <span style="text-decoration:line-through; opacity:0.5; margin-right:6px;">${{ d.old | rate }}</span>
+        {% endif %}
+        ${{ d.new | rate }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
   {% else %}
   <p class="feed-meta" style="margin:0 0 8px;">Benchmark rates are currently static (seed data). Refresh to pull current colocation, mobile, and license pricing from live sources.</p>
   {% endif %}

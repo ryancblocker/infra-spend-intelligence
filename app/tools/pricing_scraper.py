@@ -43,8 +43,10 @@ read prose with, so a stale-but-correct static rate beats a regex guess.
 
 from __future__ import annotations
 
+import csv
 import json
 from datetime import datetime, timezone
+from functools import lru_cache
 from html.parser import HTMLParser
 
 from pydantic import BaseModel, create_model
@@ -208,8 +210,19 @@ def _load_cache() -> dict | None:
 
 def last_refresh() -> dict | None:
     """What the most recent successful scrape found, for display - the page
-    route reads this rather than reaching into the cache file directly."""
-    return _load_cache()
+    route reads this rather than reaching into the cache file directly.
+
+    Backfills "diffs" for a cache file written before that field existed, so
+    an old scrape still renders its before/after correctly instead of
+    silently looking like nothing was ever scraped."""
+    cache = _load_cache()
+    if cache and "diffs" not in cache:
+        seed = _seed_rates()
+        cache["diffs"] = {
+            cat: {"old": seed.get(cat), "new": new_val}
+            for cat, new_val in cache.get("rates", {}).items()
+        }
+    return cache
 
 
 def _save_cache(result: dict) -> None:
@@ -218,6 +231,33 @@ def _save_cache(result: dict) -> None:
         config.BENCHMARK_CACHE_PATH.write_text(json.dumps(result), encoding="utf-8")
     except Exception:
         pass
+
+
+@lru_cache(maxsize=1)
+def _seed_rates() -> dict[str, float]:
+    """The original hand-typed guesses from app/data/seed/benchmark_rates.csv,
+    read straight from the CSV rather than the live DB - so it stays a fixed
+    "before" baseline no matter how many times the table gets refreshed.
+    Without this, comparing against whatever the previous refresh happened
+    to leave behind would make the second refresh's diff say "no change"
+    even though the number is still nothing like the original guess."""
+    rates: dict[str, float] = {}
+    try:
+        path = config.SEED_DIR / "benchmark_rates.csv"
+        with path.open(encoding="utf-8") as f:
+            reader = csv.DictReader(row for row in f if not row.startswith("#"))
+            for row in reader:
+                rates[row["category"]] = float(row["benchmark_rate"])
+    except Exception:
+        pass
+    return rates
+
+
+def _format_diff(category: str, new_value: float) -> str:
+    old_value = _seed_rates().get(category)
+    if old_value is not None and old_value != new_value:
+        return f"{category}: ${old_value:g} → ${new_value:g}"
+    return f"{category}=${new_value:g}"
 
 
 def _is_fresh(cache: dict) -> bool:
@@ -251,6 +291,29 @@ def _extract_from_page(url: str, group: str, text: str) -> tuple[dict[str, float
         if value is not None and value > 0
     }
     return rates, flags
+
+
+def reset_to_baseline() -> dict:
+    """Put every scraped category back to its original static-seed guess and
+    forget the cache, so the next "Refresh market pricing" click has a real
+    before/after to show instead of comparing today's numbers to themselves.
+
+    Deliberately not part of forced_offline_mode()/Demo Mode: that context
+    manager wraps every single pipeline run and upload, so if it also reset
+    benchmarks, re-running the analysis after a refresh (to show the
+    improved numbers) would silently wipe them back to the guess first -
+    undoing the exact thing this feature exists to demonstrate. This is a
+    one-off action you trigger yourself, e.g. once before presenting."""
+    seed = _seed_rates()
+    scraped_categories = set(FIELD_TO_CATEGORY.values())
+    dataset_tools.update_benchmark_rates({
+        cat: rate for cat, rate in seed.items() if cat in scraped_categories
+    })
+    try:
+        config.BENCHMARK_CACHE_PATH.unlink(missing_ok=True)
+    except Exception:
+        pass
+    return {"status": "reset", "categories": sorted(scraped_categories)}
 
 
 def apply_cached_only() -> dict:
@@ -287,7 +350,7 @@ def refresh_benchmarks(force: bool = False, event_queue=None) -> dict:
         cache = _load_cache()
         if not force and cache and _is_fresh(cache):
             result = apply_cached_only()
-            detail = ", ".join(f"{cat}=${v:g}" for cat, v in cache.get("rates", {}).items())
+            detail = ", ".join(_format_diff(cat, v) for cat, v in cache.get("rates", {}).items())
             emit(event_queue, "Cached rates", "completed", detail or "nothing cached yet")
             return result
 
@@ -316,7 +379,7 @@ def refresh_benchmarks(force: bool = False, event_queue=None) -> dict:
                 dataset_tools.update_benchmark_rates(page_rates)
                 rates.update(page_rates)
                 sources_used.append(url)
-                detail = ", ".join(f"{cat}=${v:g}" for cat, v in page_rates.items())
+                detail = ", ".join(_format_diff(cat, v) for cat, v in page_rates.items())
                 emit(event_queue, label, "completed", detail)
             else:
                 emit(event_queue, label, "completed", "no rate stated on this page")
@@ -324,9 +387,14 @@ def refresh_benchmarks(force: bool = False, event_queue=None) -> dict:
         if not rates:
             return {"status": "skipped", "reason": "no rate was confidently read from any source page"}
 
+        seed = _seed_rates()
         result = {
             "fetched_at": datetime.now(timezone.utc).isoformat(),
             "rates": rates,
+            "diffs": {
+                cat: {"old": seed.get(cat), "new": new_val}
+                for cat, new_val in rates.items()
+            },
             "sources_used": sources_used,
             "injection_flags": sorted(set(injection_flags)),
         }

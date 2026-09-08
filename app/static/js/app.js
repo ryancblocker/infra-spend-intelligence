@@ -254,6 +254,16 @@ function benchmarkRefresher() {
         this._source = null;
       }
     },
+
+    async resetBaseline() {
+      if (this.running) return;
+      this.running = true;
+      try {
+        await fetch("/api/reset-benchmarks", { method: "POST" });
+      } finally {
+        window.location.reload();
+      }
+    },
   };
 }
 window.benchmarkRefresher = benchmarkRefresher;

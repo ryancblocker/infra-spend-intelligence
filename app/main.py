@@ -72,6 +72,10 @@ async def enforce_upload_size_limit(request: Request, call_next):
 templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR))
 templates.env.filters["money"] = lambda v: f"${v:,.0f}" if v is not None else "N/A"
 templates.env.filters["money2"] = lambda v: f"${v:,.2f}" if v is not None else "N/A"
+# Same %g style pricing_scraper.py's own log messages use ("196", "3.5",
+# "7.99") - not money()'s comma-grouped whole dollars, these are per-unit
+# rates that are often sub-$100 and sometimes fractional.
+templates.env.filters["rate"] = lambda v: f"{v:g}" if v is not None else "N/A"
 
 _LAST_RUN: PipelineState = {}
 _RUN_LOCK = threading.Lock()
@@ -681,6 +685,19 @@ async def api_refresh_benchmarks():
 
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                               headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/reset-benchmarks")
+def api_reset_benchmarks():
+    """Put every scraped benchmark category back to its original static
+    guess. For setting up a "before" state to demo the refresh from -
+    guarded by the same lock as the refresh itself so the two can't race."""
+    if not _BENCHMARK_REFRESH_LOCK.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="A pricing refresh is already in progress")
+    try:
+        return pricing_scraper.reset_to_baseline()
+    finally:
+        _BENCHMARK_REFRESH_LOCK.release()
 
 
 ASK_SYSTEM_PROMPT = (

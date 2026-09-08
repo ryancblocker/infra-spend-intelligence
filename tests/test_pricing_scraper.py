@@ -345,3 +345,73 @@ def test_cached_path_still_emits_and_terminates(monkeypatch, small_source_map):
     events = _drain(q)
     assert len(events) == 1
     assert events[0].status == "completed"
+
+
+# ---------------------------------------------------------------------------
+# old-guess vs new-real-number diffs, and resetting back to the guess
+# ---------------------------------------------------------------------------
+
+
+def test_seed_rates_reads_the_real_static_csv():
+    seed = pricing_scraper._seed_rates()
+    # The actual hand-typed guess in app/data/seed/benchmark_rates.csv - if
+    # this ever changes, the fixture below should change with it.
+    assert seed["license_AI / LLM Assistant"] == 38.0
+
+
+def test_format_diff_shows_arrow_when_old_and_new_differ():
+    line = pricing_scraper._format_diff("license_AI / LLM Assistant", 20.0)
+    assert line == "license_AI / LLM Assistant: $38 → $20"
+
+
+def test_format_diff_is_plain_when_unchanged_or_unknown_category():
+    assert pricing_scraper._format_diff("license_AI / LLM Assistant", 38.0) == "license_AI / LLM Assistant=$38"
+    assert pricing_scraper._format_diff("not_a_real_category", 5.0) == "not_a_real_category=$5"
+
+
+def test_refresh_result_includes_diffs_against_the_seed_guess(monkeypatch, small_source_map):
+    monkeypatch.setattr(pricing_scraper, "get_mode", lambda: "ollama")
+    monkeypatch.setattr(pricing_scraper, "_fetch_text", lambda url: "text")
+
+    class _FakeReply:
+        def model_dump(self):
+            return {"colo_power_kw": 210.0}
+
+    monkeypatch.setattr(pricing_scraper, "chat_structured",
+                         lambda **kwargs: _FakeReply() if "colo_power_kw" in kwargs["schema"].model_fields else None)
+
+    result = pricing_scraper.refresh_benchmarks()
+    seed_colo = pricing_scraper._seed_rates()["colo_power_kw"]
+    assert result["diffs"]["colo_power_kw"] == {"old": seed_colo, "new": 210.0}
+
+
+def test_reset_to_baseline_restores_seed_values_and_clears_cache():
+    dataset_tools.update_benchmark_rates({"license_AI / LLM Assistant": 20.0})
+    config.BENCHMARK_CACHE_PATH.write_text(json.dumps({"fetched_at": "x", "rates": {}}), encoding="utf-8")
+
+    result = pricing_scraper.reset_to_baseline()
+
+    assert result["status"] == "reset"
+    assert dataset_tools.fetch_benchmarks()["license_AI / LLM Assistant"] == 38.0
+    assert not config.BENCHMARK_CACHE_PATH.exists()
+
+
+def test_reset_to_baseline_only_touches_scraped_categories():
+    before = dataset_tools.fetch_benchmarks()
+    pricing_scraper.reset_to_baseline()
+    after = dataset_tools.fetch_benchmarks()
+    # circuit_* categories were never in scope for scraping - untouched either way.
+    for cat in ("circuit_DIA-100", "circuit_MPLS-Backbone"):
+        assert after[cat] == before[cat]
+
+
+def test_last_refresh_backfills_diffs_for_a_pre_diffs_cache_file():
+    """A cache file written before the "diffs" field existed should still
+    render a correct before/after, not silently look unscraped."""
+    config.BENCHMARK_CACHE_PATH.write_text(json.dumps({
+        "fetched_at": "2026-08-19T04:02:11+00:00",
+        "rates": {"license_AI / LLM Assistant": 20.0},
+    }), encoding="utf-8")
+
+    refresh = pricing_scraper.last_refresh()
+    assert refresh["diffs"] == {"license_AI / LLM Assistant": {"old": 38.0, "new": 20.0}}
