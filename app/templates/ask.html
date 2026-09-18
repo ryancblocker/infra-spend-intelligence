@@ -19,7 +19,7 @@
       </div>
     </template>
     <template x-for="(m, i) in messages" :key="i">
-      <div style="margin-bottom:16px;">
+      <div class="msg-enter" style="margin-bottom:16px;">
         <div style="display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); margin-bottom:4px;">
           <span x-show="m.role !== 'user'">{{ icon('nodes', 12) }}</span>
           <span x-text="m.role === 'user' ? 'You' : 'PACT'"></span>
@@ -34,7 +34,10 @@
         </template>
       </div>
     </template>
-    <div x-show="asking" class="feed-meta">PACT is thinking…</div>
+    <div x-show="asking" class="thinking-indicator" role="status">
+      <span></span><span></span><span></span>
+      <span class="sr-only">PACT is thinking…</span>
+    </div>
   </div>
 
   <form @submit.prevent="send()" style="display:flex; gap:10px; margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">

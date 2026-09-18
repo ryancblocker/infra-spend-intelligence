@@ -10,8 +10,44 @@
 <div class="welcome">
 
   <header class="welcome-hero">
+    <!-- Hero focal asset: the product's own 8-agent pipeline, made spatial.
+         #hero-scene is a live Three.js graph (Discovery -> four parallel
+         workers -> Optimization -> Critic -> Narrator) with pulses
+         traveling the edges - see hero.js. #hero-poster is a static SVG of
+         the identical node/edge layout, the complete first frame and the
+         permanent replacement under prefers-reduced-motion, a WebGL
+         failure, or if hero.js never runs at all - nothing about this
+         page's meaning depends on the canvas initializing. -->
+    <div class="hero-visual">
+      <div id="hero-scene" class="hero-scene" hidden></div>
+      <svg id="hero-poster" class="hero-poster" viewBox="0 0 660 280" role="img"
+           aria-label="Diagram of PACT's eight-agent pipeline: Discovery feeds four parallel agents (Extraction, Waste, Benchmark, Renewal), which feed Optimization, then Critic, then Narrator.">
+        <g class="hero-poster-edges">
+          <line x1="19" y1="137" x2="209" y2="15"/>
+          <line x1="19" y1="137" x2="209" y2="97"/>
+          <line x1="19" y1="137" x2="209" y2="177"/>
+          <line x1="19" y1="137" x2="209" y2="258"/>
+          <line x1="209" y1="15" x2="418" y2="137"/>
+          <line x1="209" y1="97" x2="418" y2="137"/>
+          <line x1="209" y1="177" x2="418" y2="137"/>
+          <line x1="209" y1="258" x2="418" y2="137"/>
+          <line x1="418" y1="137" x2="540" y2="137"/>
+          <line x1="540" y1="137" x2="654" y2="137"/>
+        </g>
+        <g class="hero-poster-nodes">
+          <circle cx="19" cy="137" r="9"/>
+          <circle cx="209" cy="15" r="6.5"/>
+          <circle cx="209" cy="97" r="6.5"/>
+          <circle cx="209" cy="177" r="6.5"/>
+          <circle cx="209" cy="258" r="6.5"/>
+          <circle cx="418" cy="137" r="6.5"/>
+          <circle cx="540" cy="137" r="6.5"/>
+          <circle cx="654" cy="137" r="9"/>
+        </g>
+      </svg>
+    </div>
     <div class="welcome-eyebrow">Portfolio Agentic Contract Tracker</div>
-    <h1 class="welcome-title">Find the money hiding in your infrastructure contracts.</h1>
+    <h1 class="welcome-title welcome-title--hero">Find the money hiding in your infrastructure contracts.</h1>
     <p class="welcome-lede">
       Eight agents read your telecom, colocation, software and mobility contracts &mdash; pulling
       terms out of the actual legal text, checking rates against market benchmarks, and
@@ -109,4 +145,11 @@
   }
 </script>
 
+{% endblock %}
+
+{% block scripts %}
+<!-- Three.js loads only here, for the one hero canvas in the app - see the
+     art-direction note in hero.js on why this page alone earns it. -->
+<script src="/static/vendor/three.min.js"></script>
+<script src="/static/js/hero.js?v={{ asset_version }}"></script>
 {% endblock %}

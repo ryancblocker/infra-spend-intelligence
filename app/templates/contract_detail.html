@@ -82,29 +82,35 @@
         {% if extracted.minimum_commitment %}<span class="chip active">{{ icon("key", 13) }} {{ extracted.minimum_commitment }}</span>{% endif %}
       </div>
 
-      <details class="agent-trace">
-        <summary>{{ icon("search", 13) }} Agent trace &mdash; {{ extracted.extraction_iterations }} investigation
+      <div class="agent-trace" x-data="{ open: false }">
+        <button type="button" class="agent-trace-summary" @click="open = !open" :aria-expanded="open.toString()" aria-controls="agent-trace-body">
+          {{ icon("search", 13) }} Agent trace &mdash; {{ extracted.extraction_iterations }} investigation
           {{ 'pass' if extracted.extraction_iterations == 1 else 'passes' }},
-          {{ extracted.field_sources | length }} cited {{ 'field' if extracted.field_sources | length == 1 else 'fields' }}</summary>
-        <div class="trace-body">
-          <p>The extraction agent retrieves clauses, checks which required terms are still
-            missing, and issues its own follow-up queries for just those gaps &mdash; capped at
-            {{ extracted.extraction_iterations }} {{ 'pass' if extracted.extraction_iterations == 1 else 'passes' }} here.</p>
-          {% if extracted.unresolved_fields %}
-            <p><strong>Not found in this document:</strong>
-              {{ extracted.unresolved_fields | join(', ') }}
-              &mdash; reported as unresolved rather than guessed.</p>
-          {% else %}
-            <p><strong>All required terms resolved.</strong></p>
-          {% endif %}
-          {% if extracted.retrieval_queries %}
-            <p><strong>Retrieval queries issued ({{ extracted.retrieval_queries | length }}):</strong></p>
-            <ul class="trace-queries">
-              {% for q in extracted.retrieval_queries %}<li>{{ q }}</li>{% endfor %}
-            </ul>
-          {% endif %}
+          {{ extracted.field_sources | length }} cited {{ 'field' if extracted.field_sources | length == 1 else 'fields' }}
+        </button>
+        <div class="trace-collapse" :class="{ 'is-open': open }">
+          <div class="trace-collapse-inner">
+            <div class="trace-body" id="agent-trace-body">
+              <p>The extraction agent retrieves clauses, checks which required terms are still
+                missing, and issues its own follow-up queries for just those gaps &mdash; capped at
+                {{ extracted.extraction_iterations }} {{ 'pass' if extracted.extraction_iterations == 1 else 'passes' }} here.</p>
+              {% if extracted.unresolved_fields %}
+                <p><strong>Not found in this document:</strong>
+                  {{ extracted.unresolved_fields | join(', ') }}
+                  &mdash; reported as unresolved rather than guessed.</p>
+              {% else %}
+                <p><strong>All required terms resolved.</strong></p>
+              {% endif %}
+              {% if extracted.retrieval_queries %}
+                <p><strong>Retrieval queries issued ({{ extracted.retrieval_queries | length }}):</strong></p>
+                <ul class="trace-queries">
+                  {% for q in extracted.retrieval_queries %}<li>{{ q }}</li>{% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+          </div>
         </div>
-      </details>
+      </div>
     {% else %}
       {% if not has_run %}
         <div class="empty-state">{{ icon("inbox", 24) }}<div>The pipeline hasn't run yet &mdash; click "Run Analysis" from the Overview page.</div></div>

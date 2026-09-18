@@ -28,6 +28,9 @@ function countUp(el, target, opts) {
     return;
   }
 
+  // Plays once per page load, not on a user interaction - a KPI reveal, not
+  // a UI response - so it deliberately sits outside the --duration-fast/
+  // base/slow scale in theme.css (all under 320ms) rather than reusing one.
   const duration = 900;
   const start = performance.now();
   function frame(now) {
@@ -217,6 +220,7 @@ function benchmarkRefresher() {
   return {
     running: false,
     log: [],
+    _logSeq: 0,
     _source: null,
 
     start() {
@@ -229,11 +233,10 @@ function benchmarkRefresher() {
 
       source.onmessage = (evt) => {
         const data = JSON.parse(evt.data);
-        if (data.status === "started") {
-          this.log.unshift(`${data.label}: checking…`);
-        } else {
-          this.log.unshift(`${data.label}: ${data.detail || data.status}`);
-        }
+        const text = data.status === "started"
+          ? `${data.label}: checking…`
+          : `${data.label}: ${data.detail || data.status}`;
+        this.log.unshift({ id: ++this._logSeq, text });
       };
       source.addEventListener("result", () => {
         this._close();
@@ -295,7 +298,14 @@ function askChat() {
         this.asking = false;
         this.$nextTick(() => {
           const box = this.$refs.scrollbox;
-          if (box) box.scrollTop = box.scrollHeight;
+          if (!box) return;
+          // A new answer lands below the fold as often as not - scrolling
+          // it into view instantly teleports both the just-sent question
+          // and the arriving answer at once. Same reduced-motion check as
+          // countUp() above; native scrollTo has no duration/easing to pick,
+          // the browser owns that.
+          const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          box.scrollTo({ top: box.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
         });
       }
     },
@@ -321,16 +331,31 @@ window.askChat = askChat;
   const LOW_CONFIDENCE_TITLE =
     "Little could be read from this document - the extracted terms may be incomplete.";
 
+  // Fades the row out (see .upload-list li.is-removing in theme.css) before
+  // actually detaching it, instead of the row just vanishing. transitionend
+  // is the normal path; the setTimeout is a safety net matching
+  // --duration-base in case the transition never fires (e.g. reduced-motion
+  // strips it, or the row is already display:none). finish() is idempotent
+  // so whichever fires first wins.
+  function removeRow(row) {
+    const list = row.parentElement;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      row.remove();
+      if (list && !list.children.length) list.remove();
+    };
+    row.classList.add("is-removing");
+    row.addEventListener("transitionend", finish, { once: true });
+    setTimeout(finish, 200);
+  }
+
   function wireRemove(button) {
     button.addEventListener("click", async () => {
       const id = button.dataset.remove;
       const response = await fetch(`/api/uploads/${id}/remove`, { method: "POST" });
-      if (response.ok) {
-        const row = button.closest("li");
-        const list = row.parentElement;
-        row.remove();
-        if (list && !list.children.length) list.remove();
-      }
+      if (response.ok) removeRow(button.closest("li"));
     });
   }
 
@@ -364,6 +389,8 @@ window.askChat = askChat;
       }
     }
     const li = document.createElement("li");
+    li.style.opacity = "0";
+    li.style.transform = "translateX(-8px)";
     li.dataset.contractId = payload.contract_id;
     const link = document.createElement("a");
     link.href = `/contracts/${payload.contract_id}`;
@@ -391,6 +418,9 @@ window.askChat = askChat;
       li.append(warning);
     }
     list.appendChild(li);
+    li.offsetHeight;
+    li.style.opacity = "";
+    li.style.transform = "";
     wireRemove(remove);
   }
 

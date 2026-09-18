@@ -20,15 +20,20 @@
 <div x-data="{ filter: 'All' }">
   <div class="chip-row" style="margin-bottom:16px;">
     {% for action in ['All', 'Renegotiate', 'Cancel', 'Right-size', 'Review with owner', 'Keep but monitor'] %}
-    <button class="chip" :class="filter === '{{ action }}' ? 'active' : ''" @click="filter = '{{ action }}'"
-            x-show="true"
-            :style="filter === '{{ action }}' ? '' : ''">{{ action }}</button>
+    <button class="chip" :class="filter === '{{ action }}' ? 'active' : ''" @click="filter = '{{ action }}'">{{ action }}</button>
     {% endfor %}
   </div>
 
   {% for s in scenarios %}
   {% set tone = 'critical' if s.recommended_action == 'Cancel' else ('warning' if s.recommended_action == 'Renegotiate' else 'neutral') %}
-  <div class="card scenario-card" data-tone="{{ tone }}" style="margin-bottom:14px;" x-show="filter === 'All' || filter === '{{ s.recommended_action }}'">
+  <div class="card scenario-card" data-tone="{{ tone }}" style="margin-bottom:14px;"
+       x-show="filter === 'All' || filter === '{{ s.recommended_action }}'"
+       x-transition:enter="scenario-card-enter"
+       x-transition:enter-start="scenario-card-enter-start"
+       x-transition:enter-end="scenario-card-enter-end"
+       x-transition:leave="scenario-card-leave"
+       x-transition:leave-start="scenario-card-leave-start"
+       x-transition:leave-end="scenario-card-leave-end">
     <div class="scenario-header">
       <div class="scenario-action" data-tone="{{ tone }}">{{ action_icon(s.recommended_action, 18) }} {{ s.recommended_action }}</div>
       <div class="scenario-savings">

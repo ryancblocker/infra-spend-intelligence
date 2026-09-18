@@ -20,10 +20,33 @@
   <link rel="stylesheet" href="/static/css/theme.css?v={{ asset_version }}">
   <script src="/static/vendor/alpine.min.js" defer></script>
 </head>
-<body>
+<body x-data="{ mobileNavOpen: false }" :class="{ 'nav-open': mobileNavOpen }" @keydown.escape.window="mobileNavOpen = false">
   {% from "_icons.html" import icon %}
+
   <div class="shell">
-    <nav class="sidenav" x-data>
+    <!-- Mobile-only top bar: below the 900px breakpoint the sidenav becomes
+         an off-canvas drawer (see .sidenav's mobile rules in theme.css), so
+         this is the only way to reach navigation, the theme toggle, or Demo
+         mode on a phone - without it those controls would be completely
+         unreachable. Kept inside .shell (not a body-level sibling) so it
+         shares .shell's stacking context - .shell's own position:relative +
+         z-index:1 (needed to sit above body's fixed ambient-glow background)
+         would otherwise trap .sidenav's z-index and stop it from ever
+         painting above a body-level sibling, no matter how high a z-index
+         that sidenav declared. -->
+    <header class="mobile-topbar">
+      <a href="/" class="mobile-topbar-brand">
+        <span class="brand-mark brand-mark--sm">{{ icon("brand-p", 18) }}</span>
+        <span class="brand-title">PACT</span>
+      </a>
+      <button class="mobile-topbar-toggle" @click="mobileNavOpen = true" aria-label="Open navigation">
+        {{ icon("menu", 20) }}
+      </button>
+    </header>
+    <div class="nav-backdrop" x-show="mobileNavOpen" x-transition.opacity.duration.200ms @click="mobileNavOpen = false" x-cloak></div>
+
+    <nav class="sidenav" x-data :class="{ 'is-open': mobileNavOpen }">
+      <button class="sidenav-close" @click="mobileNavOpen = false" aria-label="Close navigation">{{ icon("x", 18) }}</button>
       <div class="brand">
         <div class="brand-mark">{{ icon("brand-p", 24) }}</div>
         <div>
@@ -63,6 +86,17 @@
   </div>
 
   <script src="/static/js/app.js?v={{ asset_version }}"></script>
+  <!-- Motion stack: GSAP drives every authored animation, Lenis is the
+       site's one smooth-scroll engine (wired to ScrollTrigger in motion.js),
+       Three.js powers only the welcome-page hero graph. All three are
+       self-hosted static builds under static/vendor/, fetched once and
+       checked in - same "no CDN, no build step" approach as alpine.min.js,
+       so the app's offline claim still holds. motion.js checks
+       prefers-reduced-motion itself and no-ops the whole stack when set. -->
+  <script src="/static/vendor/gsap.min.js"></script>
+  <script src="/static/vendor/ScrollTrigger.min.js"></script>
+  <script src="/static/vendor/lenis.min.js"></script>
+  <script src="/static/js/motion.js?v={{ asset_version }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
